@@ -1,0 +1,10 @@
+{
+  "markdownlint.configFile": ".markdownlint.jsonc",
+  "markdownlint.ignore": ["build/**"],
+  "search.exclude": {
+    "**/build": true
+  },
+  "files.watcherExclude": {
+    "**/build/**": true
+  }
+}

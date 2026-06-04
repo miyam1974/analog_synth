@@ -1,0 +1,4 @@
+{
+  "globs": ["README.md", "README.en.md", "ARCHITECTURE.md", "ARCHITECTURE.en.md", "docs/**/*.md"],
+  "ignores": ["build/**"]
+}
