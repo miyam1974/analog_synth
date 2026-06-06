@@ -70,6 +70,7 @@ public:
         editor.onPresetSelected = [this](int index) { presetManager.selectPreset(index); };
         editor.onPresetSave = [this] { promptSavePreset(); };
         editor.onPresetLoad = [this] { promptLoadPresetFile(); };
+        editor.onResetToDefaults = [this] { resetToInitialSettings(); };
 
         refreshPresetList();
         refreshMidiDeviceList();
@@ -261,6 +262,11 @@ private:
         editor.refreshUIFromParameters();
         applyMonophonicMode();
         refreshPresetList();
+    }
+
+    void resetToInitialSettings()
+    {
+        presetManager.resetToInitialSettings();
     }
 
     void refreshPresetList()

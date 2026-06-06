@@ -252,6 +252,11 @@ inline juce::String presetLoad()
     return utf8(u8"保存済みプリセットファイルを読み込みます。");
 }
 
+inline juce::String presetReset()
+{
+    return utf8(u8"初期設定（INIT プリセット）に戻します。");
+}
+
 inline juce::String virtualKeyboard()
 {
     return utf8(u8"マウスで操作できる仮想キーボード。MIDIがなくても音を確認できます。");

@@ -90,6 +90,18 @@ void PresetManager::setCurrentIndex(int index)
         currentIndex = index;
 }
 
+void PresetManager::resetToInitialSettings()
+{
+    for (int i = 0; i < presets.size(); ++i)
+    {
+        if (presets[i].isFactory && presets[i].name == "INIT")
+        {
+            selectPreset(i);
+            return;
+        }
+    }
+}
+
 bool PresetManager::saveCurrentAsUserPreset(const juce::String& name)
 {
     if (name.trim().isEmpty())
