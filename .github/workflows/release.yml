@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configure
+        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+
+      - name: Build Release
+        run: cmake --build build --config Release
+
+      - name: Package
+        shell: pwsh
+        run: |
+          $tag = "${{ github.ref_name }}"
+          $dist = "dist/NEXUS-OSC-Windows-x64-$tag"
+          New-Item -ItemType Directory -Force -Path $dist | Out-Null
+          Copy-Item "build/AnalogSynth_artefacts/Release/AnalogSynth.exe" $dist
+          Copy-Item "LICENSE" $dist
+          Compress-Archive -Path $dist -DestinationPath "$dist.zip" -Force
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.zip
+          generate_release_notes: true

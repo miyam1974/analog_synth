@@ -18,7 +18,7 @@ Getting started and build steps: [README.en.md](README.en.md) ([日本語](READM
 | Build | CMake + MSVC (`/utf-8`) |
 | Output | Standalone EXE (`build/AnalogSynth_artefacts/Release/AnalogSynth.exe`) |
 | License | MIT for this repo ([LICENSE](LICENSE)); JUCE under its own license |
-| App version | `0.3.0` (`getApplicationVersion` in `Main.cpp`; CMake `project` VERSION is `0.1.0`) |
+| App version | `project(VERSION)` in `CMakeLists.txt` (shared by `getApplicationVersion` and EXE metadata) |
 | Polyphony | 16 voices |
 | Audio | Stereo out (0 in / 2 out), MIDI in; on Windows **WASAPI** is the default via JUCE |
 
