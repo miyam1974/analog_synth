@@ -24,6 +24,7 @@ public:
     std::function<void()> onPresetSaveAs;
     std::function<void()> onPresetLoad;
     std::function<void()> onResetToDefaults;
+    std::function<void(bool)> onDiffToggleRequested;
     std::function<void()> onParameterEdited;
     std::function<void(bool)> onMonoModeChanged;
     std::function<void()> onPanic;
@@ -34,6 +35,7 @@ public:
     void setMidiStatusText(const juce::String& text);
     void setPresetNames(const juce::StringArray& names, int selectedIndex);
     void setPresetSaveButtonsEnabled(bool saveEnabled, bool saveAsEnabled);
+    void setDiffModeActive(bool active);
     void refreshUIFromParameters();
 
     int getSelectedMidiIndex() const { return midiInputCombo.getSelectedId(); }
@@ -63,6 +65,7 @@ private:
     std::unordered_map<juce::Component*, juce::String> helpTexts;
     juce::String midiStatusBackup;
     bool showingHelp = false;
+    bool parametersLocked = false;
 
     void setupOsc1Waveforms();
     void setupOsc2Waveforms();
@@ -107,6 +110,7 @@ private:
                           juce::ToggleButton& toAmp);
     void updateAmpEgDisplay();
     void updateFilterEgDisplay();
+    void setParametersLocked(bool locked);
 
     FuturisticLookAndFeel lookAndFeel;
 
@@ -130,6 +134,7 @@ private:
     juce::TextButton saveAsPresetButton;
     juce::TextButton loadPresetButton;
     juce::TextButton resetDefaultsButton;
+    juce::TextButton diffButton;
 
     juce::Label tuneCaption, tuneValueLabel;
     juce::Slider tuneSlider;

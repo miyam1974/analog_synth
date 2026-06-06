@@ -262,6 +262,12 @@ inline juce::String presetReset()
     return utf8(u8"初期設定（INIT プリセット）に戻します。");
 }
 
+inline juce::String diffCompare()
+{
+    return utf8(u8"起動時または RESET / LOAD 時の音色と比較します。\n"
+                  u8"押下中は ALL OFF・MASTER・MIDI IN のみ操作可。D キーで切替。");
+}
+
 inline juce::String virtualKeyboard()
 {
     return utf8(u8"マウスで操作できる仮想キーボード。MIDIがなくても音を確認できます。");

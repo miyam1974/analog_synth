@@ -338,6 +338,17 @@ SynthEditor::SynthEditor()
     addAndMakeVisible(resetDefaultsButton);
     registerHelp(resetDefaultsButton, HelpText::presetReset());
 
+    diffButton.setButtonText("DIFF");
+    diffButton.setClickingTogglesState(true);
+    diffButton.setComponentID("diffToggle");
+    diffButton.onClick = [this]
+    {
+        if (onDiffToggleRequested)
+            onDiffToggleRequested(diffButton.getToggleState());
+    };
+    addAndMakeVisible(diffButton);
+    registerHelp(diffButton, HelpText::diffCompare());
+
     monoButton.setButtonText("MONO");
     monoButton.setClickingTogglesState(true);
     monoButton.setToggleState(SynthParameters::getMonoMode(), juce::dontSendNotification);
@@ -377,9 +388,10 @@ SynthEditor::SynthEditor()
     };
     addAndMakeVisible(midiInputCombo);
 
-    systemMessageLabel.setFont(SynthTheme::systemMessageFont(10.0f));
+    systemMessageLabel.setFont(SynthTheme::systemMessageFont(12.0f));
     systemMessageLabel.setColour(juce::Label::textColourId, SynthTheme::textDim);
     systemMessageLabel.setJustificationType(juce::Justification::centredLeft);
+    systemMessageLabel.setComponentID("helpMessage");
     addAndMakeVisible(systemMessageLabel);
 
     setupHelpHints();
@@ -428,6 +440,9 @@ void SynthEditor::setupOsc2Waveforms()
 
 void SynthEditor::selectOsc1Waveform(int index)
 {
+    if (parametersLocked)
+        return;
+
     if (!juce::isPositiveAndBelow(index, static_cast<int>(Waveform::Count)))
         return;
 
@@ -442,6 +457,9 @@ void SynthEditor::selectOsc1Waveform(int index)
 
 void SynthEditor::selectOsc2Waveform(int index)
 {
+    if (parametersLocked)
+        return;
+
     if (!juce::isPositiveAndBelow(index, static_cast<int>(Waveform::Count)))
         return;
 
@@ -487,6 +505,9 @@ void SynthEditor::setupTuneResetButton()
 void SynthEditor::resetBipolarControl(juce::Slider& slider, juce::Label& valueLabel,
                                       int decimalPlaces, std::function<void(float)> setter)
 {
+    if (parametersLocked)
+        return;
+
     constexpr float resetValue = 0.0f;
     setter(resetValue);
     slider.setValue(resetValue, juce::dontSendNotification);
@@ -497,6 +518,9 @@ void SynthEditor::resetBipolarControl(juce::Slider& slider, juce::Label& valueLa
 
 void SynthEditor::notifyParameterEdited()
 {
+    if (parametersLocked)
+        return;
+
     if (onParameterEdited)
         onParameterEdited();
 }
@@ -707,6 +731,12 @@ void SynthEditor::setPresetNames(const juce::StringArray& names, int selectedInd
 
 void SynthEditor::setPresetSaveButtonsEnabled(bool saveEnabled, bool saveAsEnabled)
 {
+    if (parametersLocked)
+    {
+        saveEnabled = false;
+        saveAsEnabled = false;
+    }
+
     savePresetButton.setEnabled(saveEnabled);
     saveAsPresetButton.setEnabled(saveAsEnabled);
 
@@ -716,6 +746,61 @@ void SynthEditor::setPresetSaveButtonsEnabled(bool saveEnabled, bool saveAsEnabl
                           button->isEnabled() ? SynthTheme::presetSaveBright
                                               : SynthTheme::textDim.withAlpha(0.35f));
         button->repaint();
+    }
+}
+
+void SynthEditor::setDiffModeActive(bool active)
+{
+    diffButton.setToggleState(active, juce::dontSendNotification);
+    diffButton.repaint();
+    setParametersLocked(active);
+}
+
+void SynthEditor::setParametersLocked(bool locked)
+{
+    parametersLocked = locked;
+
+    juce::Component* const allowed[] = { &panicButton, &masterSlider, &masterCaption,
+                                         &masterValueLabel, &midiLabel, &midiInputCombo,
+                                         &diffButton };
+
+    const auto isAllowed = [&](juce::Component* component)
+    {
+        for (auto* allowedComponent : allowed)
+        {
+            if (component == allowedComponent)
+                return true;
+        }
+
+        return false;
+    };
+
+    std::function<void(juce::Component&)> setTreeEnabled;
+    setTreeEnabled = [&](juce::Component& component)
+    {
+        if (!isAllowed(&component))
+            component.setEnabled(!locked);
+
+        for (int i = 0; i < component.getNumChildComponents(); ++i)
+            setTreeEnabled(*component.getChildComponent(i));
+    };
+
+    for (int i = 0; i < getNumChildComponents(); ++i)
+        setTreeEnabled(*getChildComponent(i));
+
+    for (auto* allowedComponent : allowed)
+        allowedComponent->setEnabled(true);
+
+    for (const auto& button : osc1Buttons)
+    {
+        if (button != nullptr)
+            button->setEnabled(!locked);
+    }
+
+    for (const auto& button : osc2Buttons)
+    {
+        if (button != nullptr)
+            button->setEnabled(!locked);
     }
 }
 
@@ -854,6 +939,7 @@ void SynthEditor::resized()
     saveAsPresetButton.setBounds(masterArea.removeFromLeft(64).reduced(2, 8));
     loadPresetButton.setBounds(masterArea.removeFromLeft(48).reduced(2, 8));
     resetDefaultsButton.setBounds(masterArea.removeFromLeft(52).reduced(2, 8));
+    diffButton.setBounds(masterArea.removeFromLeft(44).reduced(2, 8));
     masterCaption.setBounds(masterArea.removeFromRight(56));
     masterValueLabel.setBounds(masterArea.removeFromRight(44));
     masterSlider.setBounds(masterArea.reduced(4, 10));
@@ -883,11 +969,12 @@ void SynthEditor::resized()
 
     layoutMixer(placePanel(mixerPanel, wMixer));
 
+    layoutAmpEnv(placePanel(ampPanel, wAmp));
+
     auto filterArea = placePanel(filterPanel, wFilter);
     layoutFilterMain(filterArea.removeFromTop(130));
     layoutFilterEnv(filterArea);
 
-    layoutAmpEnv(placePanel(ampPanel, wAmp));
     layoutLfo(placePanel(lfoPanel, wLfo));
 }
 
@@ -1152,12 +1239,15 @@ void SynthEditor::showHelp(const juce::String& text)
 {
     showingHelp = true;
     systemMessageLabel.setColour(juce::Label::textColourId, SynthTheme::textPrimary);
+    systemMessageLabel.setFont(SynthTheme::systemMessageFont(text.containsChar('\n') ? 11.0f : 12.0f));
     systemMessageLabel.setText(text, juce::dontSendNotification);
+    systemMessageLabel.repaint();
 }
 
 void SynthEditor::restoreStatusLine()
 {
     showingHelp = false;
+    systemMessageLabel.setFont(SynthTheme::systemMessageFont(12.0f));
     systemMessageLabel.setColour(juce::Label::textColourId, SynthTheme::textDim);
     systemMessageLabel.setText(midiStatusBackup, juce::dontSendNotification);
 }

@@ -46,10 +46,18 @@ juce::Rectangle<int> restoredWindowBounds(const AppState::Session& session)
                                    juce::jmax(kDefaultWindowWidth, session.windowW),
                                    juce::jmax(kDefaultWindowHeight, session.windowH)});
 }
+
+void applyParametersKeepingMaster(const juce::var& parameters)
+{
+    const auto masterLevel = SynthParameters::getMasterLevel();
+    PresetManager::applyParametersFromVar(parameters);
+    SynthParameters::setMasterLevel(masterLevel);
+}
 } // namespace
 
 class MainComponent : public juce::AudioAppComponent,
-                      private juce::MidiInputCallback
+                      private juce::MidiInputCallback,
+                      private juce::KeyListener
 {
 public:
     explicit MainComponent(const AppState::Session& session)
@@ -99,18 +107,24 @@ public:
         editor.onPresetSaveAs = [this] { promptSavePresetAs(); };
         editor.onPresetLoad = [this] { promptLoadPresetFile(); };
         editor.onResetToDefaults = [this] { resetToInitialSettings(); };
+        editor.onDiffToggleRequested = [this](bool active) { handleDiffToggle(active); };
         editor.onParameterEdited = [this] { updatePresetSaveButtonState(); };
 
         refreshPresetList();
         refreshMidiDeviceList();
         restoreSession(session);
         updatePresetSaveButtonState();
+        captureDiffBaseline();
+
+        setWantsKeyboardFocus(true);
+        addKeyListener(this);
 
         setSize(1080, 680);
     }
 
     ~MainComponent() override
     {
+        removeKeyListener(this);
         shutdownAudio();
         closeMidiInputs();
         setLookAndFeel(nullptr);
@@ -202,7 +216,32 @@ public:
         editor.setBounds(bounds.reduced(kMargin, 8));
     }
 
+    bool keyPressed(const juce::KeyPress& key) override
+    {
+        if (handleDiffKeyPress(key))
+            return true;
+
+        return juce::AudioAppComponent::keyPressed(key);
+    }
+
 private:
+    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    {
+        return handleDiffKeyPress(key);
+    }
+
+    bool handleDiffKeyPress(const juce::KeyPress& key)
+    {
+        if (juce::Component::getCurrentlyModalComponent() != nullptr)
+            return false;
+
+        if (key.getKeyCode() != 'D' || key.getModifiers().isAnyModifierKeyDown())
+            return false;
+
+        handleDiffToggle(!diffActive);
+        return true;
+    }
+
     void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message) override
     {
         midiCollector.addMessageToQueue(message);
@@ -326,7 +365,53 @@ private:
 
     void resetToInitialSettings()
     {
+        exitDiffMode();
         presetManager.resetToInitialSettings();
+        captureDiffBaseline();
+    }
+
+    void captureDiffBaseline()
+    {
+        diffBaseline = PresetManager::captureCurrentParameters();
+    }
+
+    void handleDiffToggle(bool shouldBeActive)
+    {
+        if (shouldBeActive)
+            enterDiffMode();
+        else
+            exitDiffMode();
+    }
+
+    void enterDiffMode()
+    {
+        if (diffActive || !diffBaseline.isObject())
+        {
+            editor.setDiffModeActive(false);
+            return;
+        }
+
+        diffPreToggleSnapshot = PresetManager::captureCurrentParameters();
+        applyParametersKeepingMaster(diffBaseline);
+        diffActive = true;
+        editor.setDiffModeActive(true);
+        editor.refreshUIFromParameters();
+        applyMonophonicMode();
+        updatePresetSaveButtonState();
+    }
+
+    void exitDiffMode()
+    {
+        if (!diffActive)
+            return;
+
+        applyParametersKeepingMaster(diffPreToggleSnapshot);
+        diffPreToggleSnapshot = juce::var();
+        diffActive = false;
+        editor.setDiffModeActive(false);
+        editor.refreshUIFromParameters();
+        applyMonophonicMode();
+        updatePresetSaveButtonState();
     }
 
     void refreshPresetList()
@@ -336,6 +421,12 @@ private:
 
     void updatePresetSaveButtonState()
     {
+        if (diffActive)
+        {
+            editor.setPresetSaveButtonsEnabled(false, false);
+            return;
+        }
+
         const auto dirty = presetManager.isCurrentPresetDirty();
         const auto userPreset = !presetManager.isCurrentPresetFactory();
         editor.setPresetSaveButtonsEnabled(dirty && userPreset, dirty);
@@ -415,7 +506,10 @@ private:
 
             const auto name = file.getFileNameWithoutExtension();
             if (presetManager.loadUserPreset(name))
-                onPresetParametersChanged();
+            {
+                exitDiffMode();
+                captureDiffBaseline();
+            }
         });
     }
 
@@ -538,6 +632,10 @@ private:
     SynthEditor editor;
     juce::Label titleLabel;
     juce::Label subtitleLabel;
+
+    juce::var diffBaseline;
+    juce::var diffPreToggleSnapshot;
+    bool diffActive = false;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
