@@ -56,7 +56,7 @@ See [ARCHITECTURE.en.md](ARCHITECTURE.en.md) — “Current limitations and futu
 
 You can run NEXUS OSC without a build toolchain — grab the Windows binary from [GitHub Releases](https://github.com/miyam1974/analog_synth/releases).
 
-1. Open [Releases](https://github.com/miyam1974/analog_synth/releases) and pick the latest version (e.g. `v0.3.0`)
+1. Open [Releases](https://github.com/miyam1974/analog_synth/releases) and pick the latest version (e.g. `v0.1.0`)
 2. Download `NEXUS-OSC-Windows-x64-v*.zip`
 3. Extract the ZIP to any folder
 4. Run `AnalogSynth.exe` inside the extracted folder
@@ -123,7 +123,7 @@ A local `cmake --build` does not update the Releases ZIP. A normal push to `main
 
 ### Trigger
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) runs only when a `v*` tag is pushed (e.g. `v0.3.0`).
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs only when a `v*` tag is pushed (e.g. `v0.1.0`).
 
 ### What happens on the server
 
@@ -135,9 +135,9 @@ A local `cmake --build` does not update the Releases ZIP. A normal push to `main
 
 ### Maintainer workflow (ship a new EXE)
 
-1. Update `getApplicationVersion()` in `Main.cpp` if needed (keep it aligned with the tag)
+1. Update `project(AnalogSynth VERSION …)` in `CMakeLists.txt` if needed (keep it aligned with the tag)
 2. Commit and push changes to `main`
-3. Create and push a tag (e.g. `git tag v0.3.0` then `git push origin v0.3.0`)
+3. Create and push a tag (e.g. `git tag v0.1.0` then `git push origin v0.1.0`)
 
 ### After publishing — verify
 

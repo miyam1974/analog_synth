@@ -17,7 +17,7 @@ Windows 向け JUCE 8 Standalone アナログ系シンセサイザー **NEXUS OS
 | ビルド     | CMake + MSVC（`/utf-8`）                                                          |
 | 出力      | Standalone EXE（`build/AnalogSynth_artefacts/Release/AnalogSynth.exe`）           |
 | ライセンス   | 本リポジトリ MIT（[LICENSE](LICENSE)）、JUCE は別ライセンス                                     |
-| アプリ版    | `0.3.0`（`Main.cpp` の `getApplicationVersion`。CMake `project` VERSION は `0.1.0`） |
+| アプリ版    | `CMakeLists.txt` の `project(VERSION)`（`getApplicationVersion` / EXE メタデータと共通） |
 | ポリフォニー  | 16 ボイス                                                                          |
 | オーディオ   | ステレオ出力（0 in / 2 out）、MIDI 入力対応。Windows では JUCE 経由で **WASAPI** がデフォルト            |
 
