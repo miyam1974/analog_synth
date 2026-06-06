@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22)
 
 # Canonical app version — also used by JUCE_APPLICATION_VERSION_STRING and getApplicationVersion().
-project(AnalogSynth VERSION 0.1.0 LANGUAGES CXX)
+project(AnalogSynth VERSION 0.1.0 LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

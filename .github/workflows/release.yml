@@ -17,33 +17,34 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v5
 
-      - name: Set up MSVC
-        uses: ilammy/msvc-dev-cmd@v1
-        with:
-          arch: x64
-
       - name: Show toolchain
         shell: pwsh
         run: |
           cmake --version
-          cl 2>&1 | Select-Object -First 1
+          & "${env:ProgramFiles(x86)}\Microsoft Visual Studio\Installer\vswhere.exe" `
+            -latest -products * -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 `
+            -property displayName
 
       - name: Configure
-        run: cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=Release
+        run: cmake -S . -B build -G "Visual Studio 18 2026" -A x64
 
       - name: Build Release
-        run: cmake --build build --parallel
+        run: cmake --build build --config Release --parallel
 
       - name: Package
         shell: pwsh
         run: |
-          $exe = Get-ChildItem -Path build -Recurse -Filter AnalogSynth.exe |
-            Select-Object -First 1
-          if (-not $exe) {
-            Write-Error "AnalogSynth.exe not found under build/"
-            exit 1
+          $exePath = "build/AnalogSynth_artefacts/Release/AnalogSynth.exe"
+          if (-not (Test-Path $exePath)) {
+            $exe = Get-ChildItem -Path build -Recurse -Filter AnalogSynth.exe |
+              Select-Object -First 1
+            if (-not $exe) {
+              Write-Error "AnalogSynth.exe not found under build/"
+              exit 1
+            }
+            $exePath = $exe.FullName
           }
-          Write-Host "Found: $($exe.FullName)"
+          Write-Host "Found: $exePath"
 
           $tag = "${{ github.ref_name }}"
           if ($tag -eq "Release" -or [string]::IsNullOrWhiteSpace($tag)) {
@@ -51,7 +52,7 @@ jobs:
           }
           $dist = "dist/NEXUS-OSC-Windows-x64-$tag"
           New-Item -ItemType Directory -Force -Path $dist | Out-Null
-          Copy-Item $exe.FullName $dist
+          Copy-Item $exePath $dist
           Copy-Item "LICENSE" $dist
           Compress-Archive -Path $dist -DestinationPath "$dist.zip" -Force
 
