@@ -23,6 +23,31 @@ juce_add_gui_app(AnalogSynth
     NEEDS_MIDI_OUTPUT FALSE
 )
 
+get_target_property(_analog_juce_gen_dir AnalogSynth JUCE_GENERATED_SOURCES_DIRECTORY)
+set(_analog_app_icon_png "${CMAKE_CURRENT_SOURCE_DIR}/Resources/Icons/app_icon.png")
+set(_analog_app_icon_ico "${_analog_juce_gen_dir}/icon.ico")
+set(_analog_app_icon_rc "${_analog_juce_gen_dir}/AppPrimaryIcon.rc")
+
+if(WIN32)
+    file(MAKE_DIRECTORY "${_analog_juce_gen_dir}")
+    configure_file("${CMAKE_CURRENT_SOURCE_DIR}/Resources/Icons/AppPrimaryIcon.rc"
+                   "${_analog_app_icon_rc}" COPYONLY)
+
+    add_custom_command(
+        OUTPUT "${_analog_app_icon_ico}"
+        COMMAND juce::juceaide winicon "${_analog_app_icon_ico}" "${_analog_app_icon_png}"
+        DEPENDS "${_analog_app_icon_png}" juce::juceaide
+        COMMENT "Generating Windows application icon"
+        VERBATIM)
+
+    add_custom_target(AnalogSynth_app_icon DEPENDS "${_analog_app_icon_ico}")
+    add_dependencies(AnalogSynth AnalogSynth_app_icon)
+
+    target_sources(AnalogSynth PRIVATE "${_analog_app_icon_rc}")
+    set_source_files_properties("${_analog_app_icon_rc}"
+        PROPERTIES OBJECT_DEPENDS "${_analog_app_icon_ico}")
+endif()
+
 target_sources(AnalogSynth
     PRIVATE
         Source/Main.cpp
