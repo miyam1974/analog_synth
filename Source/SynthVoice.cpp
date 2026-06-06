@@ -55,15 +55,19 @@ void SynthVoice::startNote(int midiNoteNumber, float velocity,
 void SynthVoice::legatoNoteOn(int midiNoteNumber, float velocity)
 {
     const auto wasSounding = isSoundingForMono();
+    // True legato only while a key is still held (no Note Off yet). After Note Off the amp EG
+    // may still be releasing; a new Note On must retrigger attack, not continue the tail.
+    const auto legato = wasSounding && isKeyDown();
+
     setKeyDown(true);
     currentMidiNote = midiNoteNumber;
     noteVelocity = juce::jlimit(0.0f, 1.0f, velocity);
     targetFrequencyHz = frequencyForMidiNote(midiNoteNumber, 0);
 
-    beginPitchGlide(wasSounding && SynthParameters::getGlideSec() > 0.001f);
+    beginPitchGlide(legato && SynthParameters::getGlideSec() > 0.001f);
     refreshEnvelopeParameters();
 
-    if (!wasSounding)
+    if (!legato)
     {
         ampEnvelope.noteOn();
         filterEnvelope.noteOn();
