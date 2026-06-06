@@ -14,10 +14,27 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
+
+      - name: Show toolchain
+        shell: pwsh
+        run: cmake --version
 
       - name: Configure
-        run: cmake -S . -B build -G "Visual Studio 17 2022" -A x64
+        shell: pwsh
+        run: |
+          $attempts = @(
+            @{ Generator = "Visual Studio 18 2026"; Arch = "x64" },
+            @{ Generator = "Visual Studio 17 2022"; Arch = "x64" }
+          )
+          foreach ($attempt in $attempts) {
+            Write-Host "Trying $($attempt.Generator) ..."
+            if (Test-Path build) { Remove-Item -Recurse -Force build }
+            cmake -S . -B build -G $attempt.Generator -A $attempt.Arch
+            if ($LASTEXITCODE -eq 0) { exit 0 }
+          }
+          Write-Error "CMake configure failed for all generators."
+          exit 1
 
       - name: Build Release
         run: cmake --build build --config Release

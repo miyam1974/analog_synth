@@ -126,7 +126,7 @@ MSVC では `/utf-8` を有効にしており、日本語ヘルプ（`HelpString
 ### サーバー上で行われる処理
 
 1. リポジトリのソースをチェックアウト
-2. CMake で Visual Studio 2022 / x64 の Release ビルドを実行
+2. CMake で Visual Studio 2026（なければ 2022）/ x64 の Release ビルドを実行
 3. `AnalogSynth.exe` と `LICENSE` を `NEXUS-OSC-Windows-x64-<タグ名>.zip` にまとめる
 4. [GitHub Releases](https://github.com/miyam1974/analog_synth/releases) に ZIP を添付（Release ページを自動作成）
 
