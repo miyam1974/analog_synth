@@ -52,13 +52,33 @@ See [ARCHITECTURE.en.md](ARCHITECTURE.en.md) — “Current limitations and futu
 
 ---
 
+## Download
+
+You can run NEXUS OSC without a build toolchain — grab the Windows binary from [GitHub Releases](https://github.com/miyam1974/analog_synth/releases).
+
+1. Open [Releases](https://github.com/miyam1974/analog_synth/releases) and pick the latest version (e.g. `v0.3.0`)
+2. Download `NEXUS-OSC-Windows-x64-v*.zip`
+3. Extract the ZIP to any folder
+4. Run `AnalogSynth.exe` inside the extracted folder
+
+The ZIP contains `AnalogSynth.exe` and `LICENSE`. Your last session is stored in `%APPDATA%/NEXUS OSC/session.json`.
+
+---
+
 ## Requirements
 
+### Runtime (download)
+
 - **OS**: Windows 10 / 11 (64-bit)
-- **Build**: [Visual Studio 2019 or later](https://visualstudio.microsoft.com/) (“Desktop development with C++” workload)
+- **MIDI input** (optional)
+- **Audio output** (WASAPI by default)
+
+### Build from source
+
+- Everything above, plus [Visual Studio 2019 or later](https://visualstudio.microsoft.com/)
+  (“Desktop development with C++” workload)
 - **CMake**: 3.22 or newer
 - **Git**: fetches JUCE 8.0.6 via FetchContent
-- **Runtime**: MIDI input (optional), audio output (WASAPI by default)
 
 ---
 
@@ -83,20 +103,76 @@ Quit the running app before rebuilding to avoid linker errors.
 
 MSVC builds use `/utf-8` so Japanese help text in `HelpStrings.h` stays UTF-8.
 
+To publish the download EXE, see [Updating the release EXE (maintainers)](#updating-the-release-exe-maintainers).
+
+---
+
+## Updating the release EXE (maintainers)
+
+The `AnalogSynth.exe` under [Download](#download) is **not** uploaded manually from your local `build/` folder.
+When you push a **version tag** to GitHub, **GitHub Actions** on GitHub’s servers builds and publishes a new ZIP.
+
+### Where it runs
+
+| Action | Where |
+| ------ | ----- |
+| Edit source, `git commit`, `git push` | Your PC |
+| Release build, ZIP packaging, upload to Releases | **GitHub Actions** (`windows-latest` runner) |
+
+A local `cmake --build` does not update the Releases ZIP. A normal push to `main` alone does not either.
+
+### Trigger
+
+[`.github/workflows/release.yml`](.github/workflows/release.yml) runs only when a `v*` tag is pushed (e.g. `v0.3.0`).
+
+### What happens on the server
+
+1. Check out the repository source
+2. Configure and build Release with CMake (Visual Studio 2022, x64)
+3. Package `AnalogSynth.exe` and `LICENSE` into `NEXUS-OSC-Windows-x64-<tag>.zip`
+4. Attach the ZIP to [GitHub Releases](https://github.com/miyam1974/analog_synth/releases)
+   (creates the release page if needed)
+
+### Maintainer workflow (ship a new EXE)
+
+1. Update `getApplicationVersion()` in `Main.cpp` if needed (keep it aligned with the tag)
+2. Commit and push changes to `main`
+3. Create and push a tag (e.g. `git tag v0.3.0` then `git push origin v0.3.0`)
+
+### After publishing — verify
+
+- On GitHub **Actions**, confirm the `Release` workflow succeeded
+- On **Releases**, confirm the new ZIP is listed
+
+To reuse a tag, delete the existing tag/release on GitHub first, or pick a new version number.
+
+### What end users see
+
+Users download the latest `NEXUS-OSC-Windows-x64-v*.zip` from [Releases](https://github.com/miyam1974/analog_synth/releases).
+After you push a new tag and Actions succeeds, a fresh EXE appears there.
+
 ---
 
 ## Usage
 
 1. Connect a USB MIDI keyboard (optional)
-2. Run `AnalogSynth.exe`
+2. Run `AnalogSynth.exe` from a [download](#download) or [build](#build)
 3. Under **SYSTEM**, choose **MIDI IN** (`All Inputs` merges all devices)
 4. Tweak modules, then play from the on-screen keyboard or MIDI
 5. Hover controls to see Japanese help in the SYSTEM footer
+6. Press **RESET** to restore factory defaults (INIT preset)
+7. On quit, synth settings, preset, MIDI input, and window layout are restored on next launch
 
 ### User preset location
 
 ```text
 %APPDATA%/NEXUS OSC/Presets/*.json
+```
+
+### Session file (state on quit)
+
+```text
+%APPDATA%/NEXUS OSC/session.json
 ```
 
 ---
