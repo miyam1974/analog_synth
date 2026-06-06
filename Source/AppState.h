@@ -11,6 +11,7 @@ struct Session
     int presetIndex = 0;
     bool midiAllInputs = true;
     juce::String midiDeviceId;
+    bool hasWindowBounds = false;
     int windowX = 0;
     int windowY = 0;
     int windowW = 1080;

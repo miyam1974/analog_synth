@@ -23,6 +23,29 @@ constexpr int kDefaultWindowWidth = 1080;
 constexpr int kDefaultWindowHeight = 680;
 constexpr int kMaxWindowWidth = 4096;
 constexpr int kMaxWindowHeight = 2160;
+
+juce::Rectangle<int> clampWindowToDisplay(juce::Rectangle<int> bounds)
+{
+    const auto& displays = juce::Desktop::getInstance().getDisplays();
+    if (auto* display = displays.getDisplayForRect(bounds))
+    {
+        const auto area = display->userArea;
+        bounds.setSize(juce::jmin(bounds.getWidth(), area.getWidth()),
+                       juce::jmin(bounds.getHeight(), area.getHeight()));
+        bounds.setX(juce::jlimit(area.getX(), area.getRight() - bounds.getWidth(), bounds.getX()));
+        bounds.setY(juce::jlimit(area.getY(), area.getBottom() - bounds.getHeight(), bounds.getY()));
+    }
+
+    return bounds;
+}
+
+juce::Rectangle<int> restoredWindowBounds(const AppState::Session& session)
+{
+    return clampWindowToDisplay({session.windowX,
+                                   session.windowY,
+                                   juce::jmax(kDefaultWindowWidth, session.windowW),
+                                   juce::jmax(kDefaultWindowHeight, session.windowH)});
+}
 } // namespace
 
 class MainComponent : public juce::AudioAppComponent,
@@ -88,10 +111,39 @@ public:
 
     ~MainComponent() override
     {
-        saveSession();
         shutdownAudio();
         closeMidiInputs();
         setLookAndFeel(nullptr);
+    }
+
+    void saveSession(const juce::Rectangle<int>& windowBounds)
+    {
+        AppState::Session session;
+        session.parameters = PresetManager::captureCurrentParameters();
+        session.presetIndex = presetManager.getCurrentIndex();
+
+        const auto midiComboId = editor.getSelectedMidiIndex();
+        if (midiComboId <= 1)
+        {
+            session.midiAllInputs = true;
+        }
+        else
+        {
+            const auto index = midiComboId - 2;
+            if (juce::isPositiveAndBelow(index, midiDeviceIdentifiers.size()))
+            {
+                session.midiAllInputs = false;
+                session.midiDeviceId = midiDeviceIdentifiers[index];
+            }
+        }
+
+        session.hasWindowBounds = true;
+        session.windowX = windowBounds.getX();
+        session.windowY = windowBounds.getY();
+        session.windowW = windowBounds.getWidth();
+        session.windowH = windowBounds.getHeight();
+
+        AppState::save(session);
     }
 
     void prepareToPlay(int, double sampleRate) override
@@ -415,39 +467,6 @@ private:
         updatePresetSaveButtonState();
     }
 
-    void saveSession()
-    {
-        AppState::Session session;
-        session.parameters = PresetManager::captureCurrentParameters();
-        session.presetIndex = presetManager.getCurrentIndex();
-
-        const auto midiComboId = editor.getSelectedMidiIndex();
-        if (midiComboId <= 1)
-        {
-            session.midiAllInputs = true;
-        }
-        else
-        {
-            const auto index = midiComboId - 2;
-            if (juce::isPositiveAndBelow(index, midiDeviceIdentifiers.size()))
-            {
-                session.midiAllInputs = false;
-                session.midiDeviceId = midiDeviceIdentifiers[index];
-            }
-        }
-
-        if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
-        {
-            const auto bounds = window->getBounds();
-            session.windowX = bounds.getX();
-            session.windowY = bounds.getY();
-            session.windowW = bounds.getWidth();
-            session.windowH = bounds.getHeight();
-        }
-
-        AppState::save(session);
-    }
-
     void reconnectMidiInput(int comboId)
     {
         closeMidiInputs();
@@ -549,16 +568,10 @@ private:
             setContentOwned(new MainComponent(session), true);
             setResizable(true, true);
 
-            if (session.valid && session.windowW > 0 && session.windowH > 0)
-            {
-                setBounds(session.windowX, session.windowY,
-                          juce::jmax(kDefaultWindowWidth, session.windowW),
-                          juce::jmax(kDefaultWindowHeight, session.windowH));
-            }
+            if (session.valid && session.hasWindowBounds && session.windowW > 0 && session.windowH > 0)
+                setBounds(restoredWindowBounds(session));
             else
-            {
                 centreWithSize(kDefaultWindowWidth, kDefaultWindowHeight);
-            }
 
             setVisible(true);
             lockMinimumSizeToCurrentBounds();
@@ -567,12 +580,21 @@ private:
             juce::MessageManager::callAsync([this] { lockMinimumSizeToCurrentBounds(); });
         }
 
+        ~MainWindow() override { persistSession(); }
+
         void closeButtonPressed() override
         {
+            persistSession();
             juce::JUCEApplication::getInstance()->systemRequestedQuit();
         }
 
     private:
+        void persistSession()
+        {
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                content->saveSession(getBounds());
+        }
+
         void lockMinimumSizeToCurrentBounds()
         {
             int minW = getWidth();
