@@ -128,7 +128,7 @@ A local `cmake --build` does not update the Releases ZIP. A normal push to `main
 ### What happens on the server
 
 1. Check out the repository source
-2. Configure and build Release with CMake (Visual Studio 2026, or 2022 fallback, x64)
+2. Configure and build Release with CMake + Ninja and MSVC on `windows-latest`
 3. Package `AnalogSynth.exe` and `LICENSE` into `NEXUS-OSC-Windows-x64-<tag>.zip`
 4. Attach the ZIP to [GitHub Releases](https://github.com/miyam1974/analog_synth/releases)
    (creates the release page if needed)
