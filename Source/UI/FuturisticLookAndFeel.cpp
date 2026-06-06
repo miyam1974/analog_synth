@@ -2,6 +2,67 @@
 
 #include "SynthTheme.h"
 
+namespace
+{
+void drawAccentActionButton(juce::Graphics& g, juce::Rectangle<float> bounds, bool enabled,
+                            bool highlighted, bool down)
+{
+    if (enabled)
+    {
+        g.setColour(SynthTheme::accent.withAlpha(0.12f));
+        g.fillRoundedRectangle(bounds.expanded(1.5f), 4.0f);
+        g.setColour(highlighted ? SynthTheme::accentDim : SynthTheme::panelFillHi);
+        g.fillRoundedRectangle(bounds, 4.0f);
+        g.setColour((highlighted || down) ? SynthTheme::accent : SynthTheme::accentDim);
+        g.drawRoundedRectangle(bounds, 4.0f, 1.5f);
+        return;
+    }
+
+    g.setColour(SynthTheme::panelFill);
+    g.fillRoundedRectangle(bounds, 4.0f);
+    g.setColour(SynthTheme::accentDim.withAlpha(0.22f));
+    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+}
+
+void drawAccentActionButtonText(juce::Graphics& g, juce::TextButton& button, int buttonHeight)
+{
+    const auto colour = button.isEnabled() ? SynthTheme::accentBright
+                                           : SynthTheme::textDim.withAlpha(0.35f);
+    g.setColour(colour);
+    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.48f));
+    g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
+}
+
+void drawPresetSaveButton(juce::Graphics& g, juce::Rectangle<float> bounds, bool enabled,
+                          bool highlighted, bool down)
+{
+    if (enabled)
+    {
+        g.setColour(SynthTheme::presetSaveGlow);
+        g.fillRoundedRectangle(bounds.expanded(1.5f), 4.0f);
+        g.setColour(highlighted ? SynthTheme::presetSaveFillHi : SynthTheme::presetSaveFill);
+        g.fillRoundedRectangle(bounds, 4.0f);
+        g.setColour((highlighted || down) ? SynthTheme::presetSaveAccent : SynthTheme::presetSaveDim);
+        g.drawRoundedRectangle(bounds, 4.0f, 1.5f);
+        return;
+    }
+
+    g.setColour(SynthTheme::panelFill);
+    g.fillRoundedRectangle(bounds, 4.0f);
+    g.setColour(SynthTheme::presetSaveDim.withAlpha(0.22f));
+    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+}
+
+void drawPresetSaveButtonText(juce::Graphics& g, juce::TextButton& button, int buttonHeight)
+{
+    const auto colour = button.isEnabled() ? SynthTheme::presetSaveBright
+                                           : SynthTheme::textDim.withAlpha(0.35f);
+    g.setColour(colour);
+    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.48f));
+    g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
+}
+} // namespace
+
 FuturisticLookAndFeel::FuturisticLookAndFeel()
 {
     setColour(juce::ResizableWindow::backgroundColourId, SynthTheme::background);
@@ -52,12 +113,13 @@ void FuturisticLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button
 
     if (button.getComponentID() == "tuneReset")
     {
-        g.setColour(SynthTheme::accent.withAlpha(0.12f));
-        g.fillRoundedRectangle(bounds.expanded(1.5f), 4.0f);
-        g.setColour(highlighted ? SynthTheme::accentDim : SynthTheme::panelFillHi);
-        g.fillRoundedRectangle(bounds, 4.0f);
-        g.setColour(highlighted ? SynthTheme::accent : SynthTheme::accentDim);
-        g.drawRoundedRectangle(bounds, 4.0f, 1.5f);
+        drawAccentActionButton(g, bounds, button.isEnabled(), highlighted, down);
+        return;
+    }
+
+    if (button.getComponentID() == "presetSave")
+    {
+        drawPresetSaveButton(g, bounds, button.isEnabled(), highlighted, down);
         return;
     }
 
@@ -92,6 +154,18 @@ void FuturisticLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& 
         g.setColour(SynthTheme::panicText);
         g.setFont(SynthTheme::monoFont(static_cast<float>(button.getHeight()) * 0.38f));
         g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
+        return;
+    }
+
+    if (button.getComponentID() == "tuneReset")
+    {
+        drawAccentActionButtonText(g, button, button.getHeight());
+        return;
+    }
+
+    if (button.getComponentID() == "presetSave")
+    {
+        drawPresetSaveButtonText(g, button, button.getHeight());
         return;
     }
 
@@ -249,7 +323,7 @@ void FuturisticLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& label)
 
 juce::Font FuturisticLookAndFeel::getTextButtonFont(juce::TextButton& button, int buttonHeight)
 {
-    if (button.getComponentID() == "tuneReset")
+    if (button.getComponentID() == "tuneReset" || button.getComponentID() == "presetSave")
         return SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.48f);
 
     if (button.getComponentID() == "panic")

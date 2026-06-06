@@ -21,8 +21,10 @@ public:
     std::function<void(int)> onMidiSelectionChanged;
     std::function<void(int)> onPresetSelected;
     std::function<void()> onPresetSave;
+    std::function<void()> onPresetSaveAs;
     std::function<void()> onPresetLoad;
     std::function<void()> onResetToDefaults;
+    std::function<void()> onParameterEdited;
     std::function<void(bool)> onMonoModeChanged;
     std::function<void()> onPanic;
 
@@ -31,6 +33,7 @@ public:
     void setMidiDeviceNames(const juce::StringArray& names, int selectedId = 1);
     void setMidiStatusText(const juce::String& text);
     void setPresetNames(const juce::StringArray& names, int selectedIndex);
+    void setPresetSaveButtonsEnabled(bool saveEnabled, bool saveAsEnabled);
     void refreshUIFromParameters();
 
     int getSelectedMidiIndex() const { return midiInputCombo.getSelectedId(); }
@@ -68,6 +71,7 @@ private:
     void setupLfoRoutes();
     void setupLfo2Routes();
     void setupSubOctaveButtons();
+    void notifyParameterEdited();
     void setupKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                    const juce::String& name, float minValue, float maxValue, float defaultValue,
                    bool logarithmic, int decimalPlaces, const juce::String& helpText,
@@ -123,6 +127,7 @@ private:
     juce::TextButton subOct2Button;
     juce::Label subOctCaption;
     juce::TextButton savePresetButton;
+    juce::TextButton saveAsPresetButton;
     juce::TextButton loadPresetButton;
     juce::TextButton resetDefaultsButton;
 

@@ -68,13 +68,16 @@ public:
         editor.onPanic = [this] { stopAllSound(); };
         editor.onMonoModeChanged = [this](bool) { applyMonophonicMode(); };
         editor.onPresetSelected = [this](int index) { presetManager.selectPreset(index); };
-        editor.onPresetSave = [this] { promptSavePreset(); };
+        editor.onPresetSave = [this] { promptOverwritePreset(); };
+        editor.onPresetSaveAs = [this] { promptSavePresetAs(); };
         editor.onPresetLoad = [this] { promptLoadPresetFile(); };
         editor.onResetToDefaults = [this] { resetToInitialSettings(); };
+        editor.onParameterEdited = [this] { updatePresetSaveButtonState(); };
 
         refreshPresetList();
         refreshMidiDeviceList();
         restoreSession(session);
+        updatePresetSaveButtonState();
 
         setSize(1080, 680);
     }
@@ -262,6 +265,7 @@ private:
         editor.refreshUIFromParameters();
         applyMonophonicMode();
         refreshPresetList();
+        updatePresetSaveButtonState();
     }
 
     void resetToInitialSettings()
@@ -274,9 +278,47 @@ private:
         editor.setPresetNames(presetManager.getPresetNames(), presetManager.getCurrentIndex());
     }
 
-    void promptSavePreset()
+    void updatePresetSaveButtonState()
     {
+        const auto dirty = presetManager.isCurrentPresetDirty();
+        const auto userPreset = !presetManager.isCurrentPresetFactory();
+        editor.setPresetSaveButtonsEnabled(dirty && userPreset, dirty);
+    }
+
+    void promptOverwritePreset()
+    {
+        if (presetManager.isCurrentPresetFactory())
+            return;
+
+        const auto currentName = presetManager.getCurrentPresetName();
         auto dialog = std::make_unique<juce::AlertWindow>("Save Preset",
+                                                          "Save changes to this preset:",
+                                                          juce::MessageBoxIconType::NoIcon);
+        dialog->addTextEditor("name", currentName);
+        if (auto* editorField = dialog->getTextEditor("name"))
+            editorField->setReadOnly(true);
+        dialog->addButton("Save", 1);
+        dialog->addButton("Cancel", 0);
+
+        dialog->enterModalState(
+            true,
+            juce::ModalCallbackFunction::create([this, d = std::move(dialog)](int result) mutable
+            {
+                if (result != 1)
+                    return;
+
+                if (presetManager.overwriteCurrentUserPreset())
+                {
+                    refreshPresetList();
+                    updatePresetSaveButtonState();
+                }
+            }),
+            false);
+    }
+
+    void promptSavePresetAs()
+    {
+        auto dialog = std::make_unique<juce::AlertWindow>("Save Preset As",
                                                           "Enter a name for this preset:",
                                                           juce::MessageBoxIconType::NoIcon);
         dialog->addTextEditor("name", "My Preset");
@@ -291,7 +333,10 @@ private:
                 {
                     const auto name = d->getTextEditorContents("name").trim();
                     if (name.isNotEmpty() && presetManager.saveCurrentAsUserPreset(name))
+                    {
                         refreshPresetList();
+                        updatePresetSaveButtonState();
+                    }
                 }
             }),
             false);
@@ -346,6 +391,7 @@ private:
         if (!session.valid)
         {
             reconnectMidiInput(1);
+            updatePresetSaveButtonState();
             return;
         }
 
@@ -353,6 +399,7 @@ private:
             PresetManager::applyParametersFromVar(session.parameters);
 
         presetManager.setCurrentIndex(session.presetIndex);
+        presetManager.markPresetBaselineFromCurrent();
 
         const auto midiComboId = resolveMidiComboId(session);
         refreshMidiDeviceList(midiComboId);
@@ -361,6 +408,7 @@ private:
         editor.refreshUIFromParameters();
         refreshPresetList();
         applyMonophonicMode();
+        updatePresetSaveButtonState();
     }
 
     void saveSession()

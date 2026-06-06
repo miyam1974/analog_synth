@@ -26,6 +26,7 @@ PresetManager::PresetManager(ParametersChangedCallback onChanged)
 {
     buildFactoryPresets();
     loadUserPresetsFromDisk();
+    syncPresetBaseline();
 }
 
 void PresetManager::loadUserPresetsFromDisk()
@@ -80,6 +81,7 @@ void PresetManager::selectPreset(int index)
 
     currentIndex = index;
     applyPresetData(presets[index].data);
+    syncPresetBaseline();
     if (onParametersChanged)
         onParametersChanged();
 }
@@ -120,6 +122,7 @@ bool PresetManager::saveCurrentAsUserPreset(const juce::String& name)
         {
             presets.getReference(i).data = data;
             currentIndex = i;
+            syncPresetBaseline();
             return true;
         }
     }
@@ -130,7 +133,53 @@ bool PresetManager::saveCurrentAsUserPreset(const juce::String& name)
     entry.data = data;
     presets.add(entry);
     currentIndex = presets.size() - 1;
+    syncPresetBaseline();
     return true;
+}
+
+bool PresetManager::overwriteCurrentUserPreset()
+{
+    if (!juce::isPositiveAndBelow(currentIndex, presets.size()))
+        return false;
+
+    if (presets[currentIndex].isFactory)
+        return false;
+
+    return saveCurrentAsUserPreset(presets[currentIndex].name);
+}
+
+void PresetManager::markPresetBaselineFromCurrent()
+{
+    syncPresetBaseline();
+}
+
+bool PresetManager::isCurrentPresetFactory() const
+{
+    if (!juce::isPositiveAndBelow(currentIndex, presets.size()))
+        return true;
+
+    return presets[currentIndex].isFactory;
+}
+
+juce::String PresetManager::getCurrentPresetName() const
+{
+    if (!juce::isPositiveAndBelow(currentIndex, presets.size()))
+        return {};
+
+    return presets[currentIndex].name;
+}
+
+bool PresetManager::isCurrentPresetDirty() const
+{
+    if (baselineJson.isEmpty())
+        return false;
+
+    return juce::JSON::toString(captureCurrentParameters()) != baselineJson;
+}
+
+void PresetManager::syncPresetBaseline()
+{
+    baselineJson = juce::JSON::toString(captureCurrentParameters());
 }
 
 bool PresetManager::loadUserPreset(const juce::String& name)

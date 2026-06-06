@@ -27,6 +27,12 @@ inline const juce::Colour bipolarNegative  { 0xff50c8ff };
 inline const juce::Colour bipolarNeutral   { 0xff6a8050 };
 inline const juce::Colour bipolarPosGlow   { 0x55adff2f };
 inline const juce::Colour bipolarNegGlow   { 0x5550c8ff };
+inline const juce::Colour presetSaveFill      { 0xff9a3a08 };
+inline const juce::Colour presetSaveFillHi    { 0xffb84810 };
+inline const juce::Colour presetSaveAccent    { 0xffff8020 };
+inline const juce::Colour presetSaveBright    { 0xffffaa44 };
+inline const juce::Colour presetSaveDim       { 0xffd05818 };
+inline const juce::Colour presetSaveGlow      { 0x99ff8020 };
 
 inline bool isBipolarNearZero(float value, float step)
 {

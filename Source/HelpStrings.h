@@ -244,7 +244,12 @@ inline juce::String presetCombo()
 
 inline juce::String presetSave()
 {
-    return utf8(u8"現在の設定をユーザープリセットとして保存します。");
+    return utf8(u8"読み込み中のユーザープリセットへ上書き保存します。");
+}
+
+inline juce::String presetSaveAs()
+{
+    return utf8(u8"現在の設定を別名のユーザープリセットとして保存します。");
 }
 
 inline juce::String presetLoad()

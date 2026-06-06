@@ -275,6 +275,7 @@ SynthEditor::SynthEditor()
         const auto value = static_cast<float>(masterSlider.getValue());
         SynthParameters::setMasterLevel(value);
         masterValueLabel.setText(juce::String(value, 2), juce::dontSendNotification);
+        notifyParameterEdited();
     };
     addAndMakeVisible(masterSlider);
 
@@ -296,6 +297,9 @@ SynthEditor::SynthEditor()
     addAndMakeVisible(presetCombo);
 
     savePresetButton.setButtonText("SAVE");
+    savePresetButton.setComponentID("presetSave");
+    savePresetButton.setEnabled(false);
+    savePresetButton.setColour(juce::TextButton::textColourOffId, SynthTheme::textDim.withAlpha(0.35f));
     savePresetButton.onClick = [this]
     {
         if (onPresetSave)
@@ -303,6 +307,18 @@ SynthEditor::SynthEditor()
     };
     addAndMakeVisible(savePresetButton);
     registerHelp(savePresetButton, HelpText::presetSave());
+
+    saveAsPresetButton.setButtonText("SAVE AS");
+    saveAsPresetButton.setComponentID("presetSave");
+    saveAsPresetButton.setEnabled(false);
+    saveAsPresetButton.setColour(juce::TextButton::textColourOffId, SynthTheme::textDim.withAlpha(0.35f));
+    saveAsPresetButton.onClick = [this]
+    {
+        if (onPresetSaveAs)
+            onPresetSaveAs();
+    };
+    addAndMakeVisible(saveAsPresetButton);
+    registerHelp(saveAsPresetButton, HelpText::presetSaveAs());
 
     loadPresetButton.setButtonText("LOAD");
     loadPresetButton.onClick = [this]
@@ -331,6 +347,7 @@ SynthEditor::SynthEditor()
         SynthParameters::setMonoMode(mono);
         if (onMonoModeChanged)
             onMonoModeChanged(mono);
+        notifyParameterEdited();
     };
     addAndMakeVisible(monoButton);
     registerHelp(monoButton, HelpText::monoMode());
@@ -380,7 +397,11 @@ void SynthEditor::setupOsc1Waveforms()
     for (int i = 0; i < static_cast<int>(Waveform::Count); ++i)
     {
         auto button = std::make_unique<WaveformButton>(static_cast<Waveform>(i));
-        button->onSelect = [this, i] { selectOsc1Waveform(i); };
+        button->onSelect = [this, i]
+        {
+            selectOsc1Waveform(i);
+            notifyParameterEdited();
+        };
         addAndMakeVisible(*button);
         osc1Buttons[static_cast<size_t>(i)] = std::move(button);
     }
@@ -393,7 +414,11 @@ void SynthEditor::setupOsc2Waveforms()
     for (int i = 0; i < static_cast<int>(Waveform::Count); ++i)
     {
         auto button = std::make_unique<WaveformButton>(static_cast<Waveform>(i));
-        button->onSelect = [this, i] { selectOsc2Waveform(i); };
+        button->onSelect = [this, i]
+        {
+            selectOsc2Waveform(i);
+            notifyParameterEdited();
+        };
         addAndMakeVisible(*button);
         osc2Buttons[static_cast<size_t>(i)] = std::move(button);
     }
@@ -467,6 +492,13 @@ void SynthEditor::resetBipolarControl(juce::Slider& slider, juce::Label& valueLa
     slider.setValue(resetValue, juce::dontSendNotification);
     updateBipolarValueLabel(valueLabel, resetValue, decimalPlaces);
     slider.repaint();
+    notifyParameterEdited();
+}
+
+void SynthEditor::notifyParameterEdited()
+{
+    if (onParameterEdited)
+        onParameterEdited();
 }
 
 void SynthEditor::setupSubOctaveButtons()
@@ -490,6 +522,7 @@ void SynthEditor::setupSubOctaveButtons()
     {
         SynthParameters::setSubOctave(SubOctave::Down1);
         updateSubOctaveUi();
+        notifyParameterEdited();
     };
     addAndMakeVisible(subOct1Button);
 
@@ -499,6 +532,7 @@ void SynthEditor::setupSubOctaveButtons()
     {
         SynthParameters::setSubOctave(SubOctave::Down2);
         updateSubOctaveUi();
+        notifyParameterEdited();
     };
     addAndMakeVisible(subOct2Button);
 
@@ -515,7 +549,11 @@ void SynthEditor::setupLfoRoutes()
         button.setButtonText(text);
         button.setClickingTogglesState(true);
         button.setToggleState(initial, juce::dontSendNotification);
-        button.onClick = [setter, &button] { setter(button.getToggleState()); };
+        button.onClick = [this, setter, &button]
+        {
+            setter(button.getToggleState());
+            notifyParameterEdited();
+        };
         addAndMakeVisible(button);
         registerHelp(button, help);
     };
@@ -539,7 +577,11 @@ void SynthEditor::setupLfo2Routes()
         button.setButtonText(text);
         button.setClickingTogglesState(true);
         button.setToggleState(initial, juce::dontSendNotification);
-        button.onClick = [setter, &button] { setter(button.getToggleState()); };
+        button.onClick = [this, setter, &button]
+        {
+            setter(button.getToggleState());
+            notifyParameterEdited();
+        };
         addAndMakeVisible(button);
         registerHelp(button, help);
     };
@@ -578,7 +620,7 @@ void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::La
     if (bipolar)
         slider.setComponentID("bipolar");
     slider.setValue(defaultValue, juce::dontSendNotification);
-    slider.onValueChange = [&slider, &valueLabel, decimalPlaces, onChange, bipolar]
+    slider.onValueChange = [this, &slider, &valueLabel, decimalPlaces, onChange, bipolar]
     {
         const auto value = static_cast<float>(slider.getValue());
         onChange(value);
@@ -586,6 +628,7 @@ void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::La
             updateBipolarValueLabel(valueLabel, value, decimalPlaces);
         else
             valueLabel.setText(juce::String(value, decimalPlaces), juce::dontSendNotification);
+        notifyParameterEdited();
     };
     addAndMakeVisible(slider);
 
@@ -609,11 +652,12 @@ void SynthEditor::setupEnvKnob(juce::Label& caption, juce::Slider& slider, juce:
 {
     setupKnob(caption, slider, valueLabel, name, SynthParameters::minEnvTime,
               SynthParameters::maxEnvTime, defaultSeconds, false, 2, helpText, onChange);
-    slider.onValueChange = [&slider, &valueLabel, onChange]
+    slider.onValueChange = [this, &slider, &valueLabel, onChange]
     {
         const auto value = static_cast<float>(slider.getValue());
         onChange(value);
         valueLabel.setText(formatEnvTimeSec(value), juce::dontSendNotification);
+        notifyParameterEdited();
     };
     onChange(defaultSeconds);
     valueLabel.setText(formatEnvTimeSec(defaultSeconds), juce::dontSendNotification);
@@ -626,11 +670,12 @@ void SynthEditor::setupEnvSustainKnob(juce::Label& caption, juce::Slider& slider
 {
     setupKnob(caption, slider, valueLabel, name, 0.0f, 1.0f, defaultLevel, false, 2, helpText,
               onChange);
-    slider.onValueChange = [&slider, &valueLabel, onChange]
+    slider.onValueChange = [this, &slider, &valueLabel, onChange]
     {
         const auto value = static_cast<float>(slider.getValue());
         onChange(value);
         valueLabel.setText(formatEnvSustainPercent(value), juce::dontSendNotification);
+        notifyParameterEdited();
     };
     onChange(defaultLevel);
     valueLabel.setText(formatEnvSustainPercent(defaultLevel), juce::dontSendNotification);
@@ -658,6 +703,20 @@ void SynthEditor::setPresetNames(const juce::StringArray& names, int selectedInd
 
     if (juce::isPositiveAndBelow(selectedIndex, names.size()))
         presetCombo.setSelectedItemIndex(selectedIndex, juce::dontSendNotification);
+}
+
+void SynthEditor::setPresetSaveButtonsEnabled(bool saveEnabled, bool saveAsEnabled)
+{
+    savePresetButton.setEnabled(saveEnabled);
+    saveAsPresetButton.setEnabled(saveAsEnabled);
+
+    for (auto* button : { &savePresetButton, &saveAsPresetButton })
+    {
+        button->setColour(juce::TextButton::textColourOffId,
+                          button->isEnabled() ? SynthTheme::presetSaveBright
+                                              : SynthTheme::textDim.withAlpha(0.35f));
+        button->repaint();
+    }
 }
 
 void SynthEditor::refreshSlider(juce::Slider& slider, juce::Label& valueLabel, float value,
@@ -791,7 +850,8 @@ void SynthEditor::resized()
     monoButton.setBounds(masterArea.removeFromLeft(52).reduced(2, 8));
     presetLabel.setBounds(masterArea.removeFromLeft(48));
     presetCombo.setBounds(masterArea.removeFromLeft(120).reduced(0, 6));
-    savePresetButton.setBounds(masterArea.removeFromLeft(48).reduced(2, 8));
+    savePresetButton.setBounds(masterArea.removeFromLeft(44).reduced(2, 8));
+    saveAsPresetButton.setBounds(masterArea.removeFromLeft(64).reduced(2, 8));
     loadPresetButton.setBounds(masterArea.removeFromLeft(48).reduced(2, 8));
     resetDefaultsButton.setBounds(masterArea.removeFromLeft(52).reduced(2, 8));
     masterCaption.setBounds(masterArea.removeFromRight(56));
