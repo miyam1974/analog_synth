@@ -81,7 +81,11 @@ struct SynthParameters
     static void setSubOctave(SubOctave o) { subOctave.store(o, std::memory_order_relaxed); }
     static SubOctave getSubOctave() { return subOctave.load(std::memory_order_relaxed); }
 
-    static void setTuneSemis(float v) { tuneSemis.store(v, std::memory_order_relaxed); }
+    static void setTuneSemis(float v)
+    {
+        tuneSemis.store(static_cast<float>(juce::roundToInt(juce::jlimit(minTuneSemis, maxTuneSemis, v))),
+                        std::memory_order_relaxed);
+    }
     static float getTuneSemis() { return tuneSemis.load(std::memory_order_relaxed); }
 
     static void setFineCents(float v) { fineCents.store(v, std::memory_order_relaxed); }
