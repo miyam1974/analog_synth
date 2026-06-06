@@ -67,7 +67,7 @@ private:
     void setupKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                    const juce::String& name, float minValue, float maxValue, float defaultValue,
                    bool logarithmic, int decimalPlaces, const juce::String& helpText,
-                   std::function<void(float)> onChange);
+                   std::function<void(float)> onChange, float step = 0.001f);
     void setupEnvKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                       const juce::String& name, float defaultSeconds, const juce::String& helpText,
                       std::function<void(float)> onChange);

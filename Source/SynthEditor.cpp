@@ -42,9 +42,9 @@ SynthEditor::SynthEditor()
     setupOsc2Waveforms();
 
     setupKnob(tuneCaption, tuneSlider, tuneValueLabel, "TUNE",
-              SynthParameters::minTuneSemis, SynthParameters::maxTuneSemis, 0.0f, false, 1,
+              SynthParameters::minTuneSemis, SynthParameters::maxTuneSemis, 0.0f, false, 0,
               HelpText::tune(),
-              [](float v) { SynthParameters::setTuneSemis(v); });
+              [](float v) { SynthParameters::setTuneSemis(v); }, 1.0f);
     setupKnob(fineCaption, fineSlider, fineValueLabel, "FINE",
               SynthParameters::minFineCents, SynthParameters::maxFineCents, 0.0f, false, 0,
               HelpText::fine(),
@@ -505,7 +505,8 @@ void SynthEditor::setupLfo2Routes()
 void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                             const juce::String& name, float minValue, float maxValue,
                             float defaultValue, bool logarithmic, int decimalPlaces,
-                            const juce::String& helpText, std::function<void(float)> onChange)
+                            const juce::String& helpText, std::function<void(float)> onChange,
+                            float step)
 {
     if (name.isNotEmpty())
     {
@@ -518,7 +519,7 @@ void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::La
 
     slider.setSliderStyle(juce::Slider::LinearVertical);
     slider.setTextBoxStyle(juce::Slider::NoTextBox, false, 0, 0);
-    slider.setRange(minValue, maxValue, logarithmic ? 0.0 : 0.001);
+    slider.setRange(minValue, maxValue, logarithmic ? 0.0 : static_cast<double>(step));
     if (logarithmic)
         slider.setSkewFactorFromMidPoint(1000.0);
     slider.setValue(defaultValue, juce::dontSendNotification);
@@ -589,7 +590,7 @@ void SynthEditor::refreshUIFromParameters()
     selectOsc1Waveform(static_cast<int>(SynthParameters::getOsc1Waveform()));
     selectOsc2Waveform(static_cast<int>(SynthParameters::getOsc2Waveform()));
 
-    refreshSlider(tuneSlider, tuneValueLabel, SynthParameters::getTuneSemis(), 1);
+    refreshSlider(tuneSlider, tuneValueLabel, SynthParameters::getTuneSemis(), 0);
     refreshSlider(fineSlider, fineValueLabel, SynthParameters::getFineCents(), 0);
     refreshSlider(osc2DetuneSlider, osc2DetuneValueLabel, SynthParameters::getOsc2DetuneCents(), 0);
     refreshSlider(osc1LvlSlider, osc1LvlValueLabel, SynthParameters::getOsc1Level(), 2);
