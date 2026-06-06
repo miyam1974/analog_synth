@@ -16,13 +16,51 @@
 namespace
 {
 constexpr int kNumVoices = 16;
-constexpr int kHeaderHeight = 56;
+constexpr int kHeaderHeight = 28;
 constexpr int kKeyboardHeight = 96;
 constexpr int kMargin = 14;
+constexpr int kDefaultWindowWidth = 1080;
+constexpr int kDefaultWindowHeight = 680;
+constexpr int kMaxWindowWidth = 4096;
+constexpr int kMaxWindowHeight = 2160;
+constexpr int kHeaderTitleRowHeight = 18;
+constexpr int kHeaderTitleSubtitleGap = 12;
+constexpr int kHeaderVerticalPadding = 5;
+
+juce::Rectangle<int> clampWindowToDisplay(juce::Rectangle<int> bounds)
+{
+    const auto& displays = juce::Desktop::getInstance().getDisplays();
+    if (auto* display = displays.getDisplayForRect(bounds))
+    {
+        const auto area = display->userArea;
+        bounds.setSize(juce::jmin(bounds.getWidth(), area.getWidth()),
+                       juce::jmin(bounds.getHeight(), area.getHeight()));
+        bounds.setX(juce::jlimit(area.getX(), area.getRight() - bounds.getWidth(), bounds.getX()));
+        bounds.setY(juce::jlimit(area.getY(), area.getBottom() - bounds.getHeight(), bounds.getY()));
+    }
+
+    return bounds;
+}
+
+juce::Rectangle<int> restoredWindowBounds(const AppState::Session& session)
+{
+    return clampWindowToDisplay({session.windowX,
+                                   session.windowY,
+                                   juce::jmax(kDefaultWindowWidth, session.windowW),
+                                   juce::jmax(kDefaultWindowHeight, session.windowH)});
+}
+
+void applyParametersKeepingMaster(const juce::var& parameters)
+{
+    const auto masterLevel = SynthParameters::getMasterLevel();
+    PresetManager::applyParametersFromVar(parameters);
+    SynthParameters::setMasterLevel(masterLevel);
+}
 } // namespace
 
 class MainComponent : public juce::AudioAppComponent,
-                      private juce::MidiInputCallback
+                      private juce::MidiInputCallback,
+                      private juce::KeyListener
 {
 public:
     explicit MainComponent(const AppState::Session& session)
@@ -37,7 +75,7 @@ public:
 
         titleLabel.setText("NEXUS OSC", juce::dontSendNotification);
         titleLabel.setJustificationType(juce::Justification::centredLeft);
-        titleLabel.setFont(SynthTheme::titleFont(22.0f));
+        titleLabel.setFont(SynthTheme::titleFont(18.0f));
         titleLabel.setColour(juce::Label::textColourId, SynthTheme::accentBright);
         addAndMakeVisible(titleLabel);
 
@@ -68,23 +106,61 @@ public:
         editor.onPanic = [this] { stopAllSound(); };
         editor.onMonoModeChanged = [this](bool) { applyMonophonicMode(); };
         editor.onPresetSelected = [this](int index) { presetManager.selectPreset(index); };
-        editor.onPresetSave = [this] { promptSavePreset(); };
+        editor.onPresetSave = [this] { promptOverwritePreset(); };
+        editor.onPresetSaveAs = [this] { promptSavePresetAs(); };
         editor.onPresetLoad = [this] { promptLoadPresetFile(); };
         editor.onResetToDefaults = [this] { resetToInitialSettings(); };
+        editor.onDiffToggleRequested = [this](bool active) { handleDiffToggle(active); };
+        editor.onParameterEdited = [this] { updatePresetSaveButtonState(); };
 
         refreshPresetList();
         refreshMidiDeviceList();
         restoreSession(session);
+        updatePresetSaveButtonState();
+        captureDiffBaseline();
+
+        setWantsKeyboardFocus(true);
+        addKeyListener(this);
 
         setSize(1080, 680);
     }
 
     ~MainComponent() override
     {
-        saveSession();
+        removeKeyListener(this);
         shutdownAudio();
         closeMidiInputs();
         setLookAndFeel(nullptr);
+    }
+
+    void saveSession(const juce::Rectangle<int>& windowBounds)
+    {
+        AppState::Session session;
+        session.parameters = PresetManager::captureCurrentParameters();
+        session.presetIndex = presetManager.getCurrentIndex();
+
+        const auto midiComboId = editor.getSelectedMidiIndex();
+        if (midiComboId <= 1)
+        {
+            session.midiAllInputs = true;
+        }
+        else
+        {
+            const auto index = midiComboId - 2;
+            if (juce::isPositiveAndBelow(index, midiDeviceIdentifiers.size()))
+            {
+                session.midiAllInputs = false;
+                session.midiDeviceId = midiDeviceIdentifiers[index];
+            }
+        }
+
+        session.hasWindowBounds = true;
+        session.windowX = windowBounds.getX();
+        session.windowY = windowBounds.getY();
+        session.windowW = windowBounds.getWidth();
+        session.windowH = windowBounds.getHeight();
+
+        AppState::save(session);
     }
 
     void prepareToPlay(int, double sampleRate) override
@@ -132,9 +208,13 @@ public:
     void resized() override
     {
         auto bounds = getLocalBounds();
-        auto header = bounds.removeFromTop(kHeaderHeight).reduced(kMargin, 10);
-        titleLabel.setBounds(header.removeFromTop(28));
-        subtitleLabel.setBounds(header);
+        auto header = bounds.removeFromTop(kHeaderHeight).reduced(kMargin, kHeaderVerticalPadding);
+        auto titleRow = header.withSizeKeepingCentre(header.getWidth(), kHeaderTitleRowHeight);
+        const auto titleWidth =
+            juce::roundToInt(titleLabel.getFont().getStringWidthFloat(titleLabel.getText())) + 8;
+        titleLabel.setBounds(titleRow.removeFromLeft(titleWidth));
+        titleRow.removeFromLeft(kHeaderTitleSubtitleGap);
+        subtitleLabel.setBounds(titleRow);
 
         auto keyboardArea = bounds.removeFromBottom(kKeyboardHeight).reduced(kMargin, 6);
         if (keyboardComponent != nullptr)
@@ -143,7 +223,32 @@ public:
         editor.setBounds(bounds.reduced(kMargin, 8));
     }
 
+    bool keyPressed(const juce::KeyPress& key) override
+    {
+        if (handleDiffKeyPress(key))
+            return true;
+
+        return juce::AudioAppComponent::keyPressed(key);
+    }
+
 private:
+    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    {
+        return handleDiffKeyPress(key);
+    }
+
+    bool handleDiffKeyPress(const juce::KeyPress& key)
+    {
+        if (juce::Component::getCurrentlyModalComponent() != nullptr)
+            return false;
+
+        if (key.getKeyCode() != 'D' || key.getModifiers().isAnyModifierKeyDown())
+            return false;
+
+        handleDiffToggle(!diffActive);
+        return true;
+    }
+
     void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message) override
     {
         midiCollector.addMessageToQueue(message);
@@ -262,11 +367,58 @@ private:
         editor.refreshUIFromParameters();
         applyMonophonicMode();
         refreshPresetList();
+        updatePresetSaveButtonState();
     }
 
     void resetToInitialSettings()
     {
+        exitDiffMode();
         presetManager.resetToInitialSettings();
+        captureDiffBaseline();
+    }
+
+    void captureDiffBaseline()
+    {
+        diffBaseline = PresetManager::captureCurrentParameters();
+    }
+
+    void handleDiffToggle(bool shouldBeActive)
+    {
+        if (shouldBeActive)
+            enterDiffMode();
+        else
+            exitDiffMode();
+    }
+
+    void enterDiffMode()
+    {
+        if (diffActive || !diffBaseline.isObject())
+        {
+            editor.setDiffModeActive(false);
+            return;
+        }
+
+        diffPreToggleSnapshot = PresetManager::captureCurrentParameters();
+        applyParametersKeepingMaster(diffBaseline);
+        diffActive = true;
+        editor.setDiffModeActive(true);
+        editor.refreshUIFromParameters();
+        applyMonophonicMode();
+        updatePresetSaveButtonState();
+    }
+
+    void exitDiffMode()
+    {
+        if (!diffActive)
+            return;
+
+        applyParametersKeepingMaster(diffPreToggleSnapshot);
+        diffPreToggleSnapshot = juce::var();
+        diffActive = false;
+        editor.setDiffModeActive(false);
+        editor.refreshUIFromParameters();
+        applyMonophonicMode();
+        updatePresetSaveButtonState();
     }
 
     void refreshPresetList()
@@ -274,9 +426,53 @@ private:
         editor.setPresetNames(presetManager.getPresetNames(), presetManager.getCurrentIndex());
     }
 
-    void promptSavePreset()
+    void updatePresetSaveButtonState()
     {
+        if (diffActive)
+        {
+            editor.setPresetSaveButtonsEnabled(false, false);
+            return;
+        }
+
+        const auto dirty = presetManager.isCurrentPresetDirty();
+        const auto userPreset = !presetManager.isCurrentPresetFactory();
+        editor.setPresetSaveButtonsEnabled(dirty && userPreset, dirty);
+    }
+
+    void promptOverwritePreset()
+    {
+        if (presetManager.isCurrentPresetFactory())
+            return;
+
+        const auto currentName = presetManager.getCurrentPresetName();
         auto dialog = std::make_unique<juce::AlertWindow>("Save Preset",
+                                                          "Save changes to this preset:",
+                                                          juce::MessageBoxIconType::NoIcon);
+        dialog->addTextEditor("name", currentName);
+        if (auto* editorField = dialog->getTextEditor("name"))
+            editorField->setReadOnly(true);
+        dialog->addButton("Save", 1);
+        dialog->addButton("Cancel", 0);
+
+        dialog->enterModalState(
+            true,
+            juce::ModalCallbackFunction::create([this, d = std::move(dialog)](int result) mutable
+            {
+                if (result != 1)
+                    return;
+
+                if (presetManager.overwriteCurrentUserPreset())
+                {
+                    refreshPresetList();
+                    updatePresetSaveButtonState();
+                }
+            }),
+            false);
+    }
+
+    void promptSavePresetAs()
+    {
+        auto dialog = std::make_unique<juce::AlertWindow>("Save Preset As",
                                                           "Enter a name for this preset:",
                                                           juce::MessageBoxIconType::NoIcon);
         dialog->addTextEditor("name", "My Preset");
@@ -291,7 +487,10 @@ private:
                 {
                     const auto name = d->getTextEditorContents("name").trim();
                     if (name.isNotEmpty() && presetManager.saveCurrentAsUserPreset(name))
+                    {
                         refreshPresetList();
+                        updatePresetSaveButtonState();
+                    }
                 }
             }),
             false);
@@ -314,7 +513,10 @@ private:
 
             const auto name = file.getFileNameWithoutExtension();
             if (presetManager.loadUserPreset(name))
-                onPresetParametersChanged();
+            {
+                exitDiffMode();
+                captureDiffBaseline();
+            }
         });
     }
 
@@ -346,6 +548,7 @@ private:
         if (!session.valid)
         {
             reconnectMidiInput(1);
+            updatePresetSaveButtonState();
             return;
         }
 
@@ -353,6 +556,7 @@ private:
             PresetManager::applyParametersFromVar(session.parameters);
 
         presetManager.setCurrentIndex(session.presetIndex);
+        presetManager.markPresetBaselineFromCurrent();
 
         const auto midiComboId = resolveMidiComboId(session);
         refreshMidiDeviceList(midiComboId);
@@ -361,39 +565,7 @@ private:
         editor.refreshUIFromParameters();
         refreshPresetList();
         applyMonophonicMode();
-    }
-
-    void saveSession()
-    {
-        AppState::Session session;
-        session.parameters = PresetManager::captureCurrentParameters();
-        session.presetIndex = presetManager.getCurrentIndex();
-
-        const auto midiComboId = editor.getSelectedMidiIndex();
-        if (midiComboId <= 1)
-        {
-            session.midiAllInputs = true;
-        }
-        else
-        {
-            const auto index = midiComboId - 2;
-            if (juce::isPositiveAndBelow(index, midiDeviceIdentifiers.size()))
-            {
-                session.midiAllInputs = false;
-                session.midiDeviceId = midiDeviceIdentifiers[index];
-            }
-        }
-
-        if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
-        {
-            const auto bounds = window->getBounds();
-            session.windowX = bounds.getX();
-            session.windowY = bounds.getY();
-            session.windowW = bounds.getWidth();
-            session.windowH = bounds.getHeight();
-        }
-
-        AppState::save(session);
+        updatePresetSaveButtonState();
     }
 
     void reconnectMidiInput(int comboId)
@@ -468,6 +640,10 @@ private:
     juce::Label titleLabel;
     juce::Label subtitleLabel;
 
+    juce::var diffBaseline;
+    juce::var diffPreToggleSnapshot;
+    bool diffActive = false;
+
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
 
@@ -495,26 +671,57 @@ private:
         {
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(session), true);
-
-            if (session.valid && session.windowW > 0 && session.windowH > 0)
-            {
-                setBounds(session.windowX, session.windowY, session.windowW, session.windowH);
-            }
-            else
-            {
-                centreWithSize(1080, 680);
-            }
-
             setResizable(true, true);
+
+            if (session.valid && session.hasWindowBounds && session.windowW > 0 && session.windowH > 0)
+                setBounds(restoredWindowBounds(session));
+            else
+                centreWithSize(kDefaultWindowWidth, kDefaultWindowHeight);
+
             setVisible(true);
+            lockMinimumSizeToCurrentBounds();
+
+            // Frame size may not be final until after the native peer finishes layout.
+            juce::MessageManager::callAsync([this] { lockMinimumSizeToCurrentBounds(); });
         }
+
+        ~MainWindow() override { persistSession(); }
 
         void closeButtonPressed() override
         {
+            persistSession();
             juce::JUCEApplication::getInstance()->systemRequestedQuit();
         }
 
     private:
+        void persistSession()
+        {
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                content->saveSession(getBounds());
+        }
+
+        void lockMinimumSizeToCurrentBounds()
+        {
+            int minW = getWidth();
+            int minH = getHeight();
+            int maxW = kMaxWindowWidth;
+            int maxH = kMaxWindowHeight;
+
+            if (auto* peer = getPeer())
+            {
+                if (const auto frame = peer->getFrameSizeIfPresent())
+                {
+                    const auto borderW = frame->getLeftAndRight();
+                    const auto borderH = frame->getTopAndBottom();
+                    minW += borderW;
+                    minH += borderH;
+                    maxW += borderW;
+                    maxH += borderH;
+                }
+            }
+
+            setResizeLimits(minW, minH, maxW, maxH);
+        }
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
     };
 

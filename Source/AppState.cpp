@@ -37,6 +37,7 @@ Session load()
     const auto window = root.getProperty("window", {});
     if (window.isObject())
     {
+        session.hasWindowBounds = true;
         session.windowX = static_cast<int>(window.getProperty("x", 0));
         session.windowY = static_cast<int>(window.getProperty("y", 0));
         session.windowW = static_cast<int>(window.getProperty("w", 1080));

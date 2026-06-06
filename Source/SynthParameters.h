@@ -65,6 +65,9 @@ struct SynthParameters
     static void setOsc2Waveform(Waveform w) { osc2Waveform.store(w, std::memory_order_relaxed); }
     static Waveform getOsc2Waveform() { return osc2Waveform.load(std::memory_order_relaxed); }
 
+    static void setOsc2Enabled(bool v) { osc2Enabled.store(v, std::memory_order_relaxed); }
+    static bool getOsc2Enabled() { return osc2Enabled.load(std::memory_order_relaxed); }
+
     // Legacy alias (OSC1)
     static void setWaveform(Waveform w) { setOsc1Waveform(w); }
     static Waveform getWaveform() { return getOsc1Waveform(); }
@@ -174,6 +177,7 @@ struct SynthParameters
 private:
     inline static std::atomic<Waveform> osc1Waveform { Waveform::Saw };
     inline static std::atomic<Waveform> osc2Waveform { Waveform::Square };
+    inline static std::atomic<bool> osc2Enabled { true };
     inline static std::atomic<float> osc1Level { 0.85f };
     inline static std::atomic<float> osc2Level { 0.0f };
     inline static std::atomic<float> subLevel { 0.0f };

@@ -19,10 +19,16 @@ public:
     void selectPreset(int index);
     void resetToInitialSettings();
     bool saveCurrentAsUserPreset(const juce::String& name);
+    bool overwriteCurrentUserPreset();
     bool loadUserPreset(const juce::String& name);
     juce::File getUserPresetsDirectory() const;
 
     void setCurrentIndex(int index);
+    void markPresetBaselineFromCurrent();
+
+    bool isCurrentPresetFactory() const;
+    juce::String getCurrentPresetName() const;
+    bool isCurrentPresetDirty() const;
 
     static juce::var captureCurrentParameters();
     static void applyParametersFromVar(const juce::var& root);
@@ -38,7 +44,10 @@ private:
     void buildFactoryPresets();
     void applyPresetData(const juce::var& data);
 
+    void syncPresetBaseline();
+
     ParametersChangedCallback onParametersChanged;
     juce::Array<PresetEntry> presets;
     int currentIndex = 0;
+    juce::String baselineJson;
 };

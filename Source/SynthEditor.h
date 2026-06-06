@@ -12,6 +12,7 @@
 #include "UI/FuturisticLookAndFeel.h"
 #include "UI/LfoRateLed.h"
 #include "UI/ModulePanel.h"
+#include "UI/SubOctGroupFrame.h"
 #include "UI/WaveformButton.h"
 #include "Waveform.h"
 
@@ -21,8 +22,11 @@ public:
     std::function<void(int)> onMidiSelectionChanged;
     std::function<void(int)> onPresetSelected;
     std::function<void()> onPresetSave;
+    std::function<void()> onPresetSaveAs;
     std::function<void()> onPresetLoad;
     std::function<void()> onResetToDefaults;
+    std::function<void(bool)> onDiffToggleRequested;
+    std::function<void()> onParameterEdited;
     std::function<void(bool)> onMonoModeChanged;
     std::function<void()> onPanic;
 
@@ -31,6 +35,8 @@ public:
     void setMidiDeviceNames(const juce::StringArray& names, int selectedId = 1);
     void setMidiStatusText(const juce::String& text);
     void setPresetNames(const juce::StringArray& names, int selectedIndex);
+    void setPresetSaveButtonsEnabled(bool saveEnabled, bool saveAsEnabled);
+    void setDiffModeActive(bool active);
     void refreshUIFromParameters();
 
     int getSelectedMidiIndex() const { return midiInputCombo.getSelectedId(); }
@@ -53,19 +59,25 @@ private:
     void refreshSlider(juce::Slider& slider, juce::Label& valueLabel, float value, int decimals);
     void refreshBipolarSlider(juce::Slider& slider, juce::Label& valueLabel, float value,
                               int decimals);
+    void refreshEnvTimeSlider(juce::Slider& slider, juce::Label& valueLabel, float seconds);
+    void refreshEnvSustainSlider(juce::Slider& slider, juce::Label& valueLabel, float level);
     void refreshToggle(juce::ToggleButton& button, bool state);
 
     std::unordered_map<juce::Component*, juce::String> helpTexts;
     juce::String midiStatusBackup;
     bool showingHelp = false;
+    bool parametersLocked = false;
 
     void setupOsc1Waveforms();
     void setupOsc2Waveforms();
     void selectOsc1Waveform(int index);
     void selectOsc2Waveform(int index);
+    void refreshOsc2WaveformButtons();
+    void refreshOsc2DependentControls();
     void setupLfoRoutes();
     void setupLfo2Routes();
     void setupSubOctaveButtons();
+    void notifyParameterEdited();
     void setupKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                    const juce::String& name, float minValue, float maxValue, float defaultValue,
                    bool logarithmic, int decimalPlaces, const juce::String& helpText,
@@ -74,6 +86,9 @@ private:
     void setupEnvKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                       const juce::String& name, float defaultSeconds, const juce::String& helpText,
                       std::function<void(float)> onChange);
+    void setupEnvSustainKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
+                             const juce::String& name, float defaultLevel,
+                             const juce::String& helpText, std::function<void(float)> onChange);
     void layoutKnobColumn(juce::Rectangle<int> col, juce::Label& caption, juce::Slider& slider,
                           juce::Label& value);
     void layoutKnobColumnBody(juce::Rectangle<int> col, juce::Slider& slider, juce::Label& value);
@@ -98,6 +113,7 @@ private:
                           juce::ToggleButton& toAmp);
     void updateAmpEgDisplay();
     void updateFilterEgDisplay();
+    void setParametersLocked(bool locked);
 
     FuturisticLookAndFeel lookAndFeel;
 
@@ -116,9 +132,13 @@ private:
     juce::TextButton monoButton;
     juce::TextButton subOct1Button;
     juce::TextButton subOct2Button;
+    juce::Label subOctCaption;
+    SubOctGroupFrame subOctGroupFrame;
     juce::TextButton savePresetButton;
+    juce::TextButton saveAsPresetButton;
     juce::TextButton loadPresetButton;
     juce::TextButton resetDefaultsButton;
+    juce::TextButton diffButton;
 
     juce::Label tuneCaption, tuneValueLabel;
     juce::Slider tuneSlider;

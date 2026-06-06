@@ -244,7 +244,12 @@ inline juce::String presetCombo()
 
 inline juce::String presetSave()
 {
-    return utf8(u8"現在の設定をユーザープリセットとして保存します。");
+    return utf8(u8"読み込み中のユーザープリセットへ上書き保存します。");
+}
+
+inline juce::String presetSaveAs()
+{
+    return utf8(u8"現在の設定を別名のユーザープリセットとして保存します。");
 }
 
 inline juce::String presetLoad()
@@ -255,6 +260,12 @@ inline juce::String presetLoad()
 inline juce::String presetReset()
 {
     return utf8(u8"初期設定（INIT プリセット）に戻します。");
+}
+
+inline juce::String diffCompare()
+{
+    return utf8(u8"起動時または RESET / LOAD 時の音色と比較します。\n"
+                  u8"押下中は ALL OFF・MASTER・MIDI IN のみ操作可。D キーで切替。");
 }
 
 inline juce::String virtualKeyboard()

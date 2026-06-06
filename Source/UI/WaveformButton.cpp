@@ -45,8 +45,15 @@ void WaveformButton::paint(juce::Graphics& g)
 
 void WaveformButton::mouseUp(const juce::MouseEvent& event)
 {
-    if (event.mouseWasClicked() && onSelect)
-        onSelect();
+    if (!isEnabled() || !event.mouseWasClicked() || !onSelect)
+        return;
+
+    onSelect();
+}
+
+bool WaveformButton::hitTest(int x, int y)
+{
+    return isVisible() && getLocalBounds().contains(x, y);
 }
 
 void WaveformButton::drawWaveformShape(juce::Graphics& g, juce::Rectangle<float> bounds,

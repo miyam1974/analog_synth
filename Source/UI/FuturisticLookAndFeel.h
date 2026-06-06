@@ -28,4 +28,6 @@ public:
 
     juce::Font getTextButtonFont(juce::TextButton&, int buttonHeight) override;
     juce::Font getLabelFont(juce::Label&) override;
+
+    void positionComboBoxText(juce::ComboBox&, juce::Label&) override;
 };

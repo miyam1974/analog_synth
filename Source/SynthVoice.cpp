@@ -295,7 +295,8 @@ float SynthVoice::computeAmpGain(float ampEg) const
 float SynthVoice::mixOscillators()
 {
     const auto osc1 = waveformSample(SynthParameters::getOsc1Waveform(), osc1Angle);
-    const auto osc2 = waveformSample(SynthParameters::getOsc2Waveform(), osc2Angle);
+    const auto osc2Enabled = SynthParameters::getOsc2Enabled();
+    const auto osc2 = osc2Enabled ? waveformSample(SynthParameters::getOsc2Waveform(), osc2Angle) : 0.0f;
     const auto sub = waveformSample(SynthParameters::getOsc1Waveform(), subAngle);
 
     const auto osc1Level = SynthParameters::getOsc1Level();

@@ -17,6 +17,7 @@ public:
     std::function<void()> onSelect;
 
     void paint(juce::Graphics& g) override;
+    bool hitTest(int x, int y) override;
     void mouseUp(const juce::MouseEvent& event) override;
 
     static void drawWaveformShape(juce::Graphics& g, juce::Rectangle<float> bounds,
