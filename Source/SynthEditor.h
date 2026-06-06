@@ -116,6 +116,7 @@ private:
     juce::TextButton monoButton;
     juce::TextButton subOct1Button;
     juce::TextButton subOct2Button;
+    juce::Label subOctCaption;
     juce::TextButton savePresetButton;
     juce::TextButton loadPresetButton;
     juce::TextButton resetDefaultsButton;

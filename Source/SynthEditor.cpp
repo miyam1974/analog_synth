@@ -468,6 +468,12 @@ void SynthEditor::setupSubOctaveButtons()
         subOct2Button.setToggleState(down2, juce::dontSendNotification);
     };
 
+    subOctCaption.setText("SUB", juce::dontSendNotification);
+    subOctCaption.setJustificationType(juce::Justification::centred);
+    subOctCaption.setFont(SynthTheme::monoFont(9.0f));
+    subOctCaption.setColour(juce::Label::textColourId, SynthTheme::textDim);
+    addAndMakeVisible(subOctCaption);
+
     subOct1Button.setButtonText("-1 OCT");
     subOct1Button.setClickingTogglesState(false);
     subOct1Button.onClick = [this, updateSubOctaveUi]
@@ -476,7 +482,6 @@ void SynthEditor::setupSubOctaveButtons()
         updateSubOctaveUi();
     };
     addAndMakeVisible(subOct1Button);
-    registerHelp(subOct1Button, HelpText::subOctave());
 
     subOct2Button.setButtonText("-2 OCT");
     subOct2Button.setClickingTogglesState(false);
@@ -486,6 +491,8 @@ void SynthEditor::setupSubOctaveButtons()
         updateSubOctaveUi();
     };
     addAndMakeVisible(subOct2Button);
+
+    registerHelpGroup({ &subOctCaption, &subOct1Button, &subOct2Button }, HelpText::subOctave());
 
     updateSubOctaveUi();
 }
@@ -854,10 +861,11 @@ void SynthEditor::layoutMixer(juce::Rectangle<int> area)
     layoutKnobColumnBody(levels.removeFromLeft(colW), subLvlSlider, subLvlValueLabel);
     layoutKnobColumnBody(levels, noiseSlider, noiseValueLabel);
 
-    auto subRow = area.removeFromTop(28).reduced(2, 0);
-    const auto half = subRow.getWidth() / 2;
-    subOct1Button.setBounds(subRow.removeFromLeft(half).reduced(2));
-    subOct2Button.setBounds(subRow.reduced(2));
+    auto subOctBlock = area.removeFromTop(40).reduced(2, 0);
+    subOctCaption.setBounds(subOctBlock.removeFromTop(14));
+    const auto half = subOctBlock.getWidth() / 2;
+    subOct1Button.setBounds(subOctBlock.removeFromLeft(half).reduced(2));
+    subOct2Button.setBounds(subOctBlock.reduced(2));
 
     area.removeFromTop(4);
     const auto perfColW = area.getWidth() / 3;
