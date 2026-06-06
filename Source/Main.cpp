@@ -16,13 +16,16 @@
 namespace
 {
 constexpr int kNumVoices = 16;
-constexpr int kHeaderHeight = 56;
+constexpr int kHeaderHeight = 28;
 constexpr int kKeyboardHeight = 96;
 constexpr int kMargin = 14;
 constexpr int kDefaultWindowWidth = 1080;
 constexpr int kDefaultWindowHeight = 680;
 constexpr int kMaxWindowWidth = 4096;
 constexpr int kMaxWindowHeight = 2160;
+constexpr int kHeaderTitleRowHeight = 18;
+constexpr int kHeaderTitleSubtitleGap = 12;
+constexpr int kHeaderVerticalPadding = 5;
 
 juce::Rectangle<int> clampWindowToDisplay(juce::Rectangle<int> bounds)
 {
@@ -72,7 +75,7 @@ public:
 
         titleLabel.setText("NEXUS OSC", juce::dontSendNotification);
         titleLabel.setJustificationType(juce::Justification::centredLeft);
-        titleLabel.setFont(SynthTheme::titleFont(22.0f));
+        titleLabel.setFont(SynthTheme::titleFont(18.0f));
         titleLabel.setColour(juce::Label::textColourId, SynthTheme::accentBright);
         addAndMakeVisible(titleLabel);
 
@@ -205,9 +208,13 @@ public:
     void resized() override
     {
         auto bounds = getLocalBounds();
-        auto header = bounds.removeFromTop(kHeaderHeight).reduced(kMargin, 10);
-        titleLabel.setBounds(header.removeFromTop(28));
-        subtitleLabel.setBounds(header);
+        auto header = bounds.removeFromTop(kHeaderHeight).reduced(kMargin, kHeaderVerticalPadding);
+        auto titleRow = header.withSizeKeepingCentre(header.getWidth(), kHeaderTitleRowHeight);
+        const auto titleWidth =
+            juce::roundToInt(titleLabel.getFont().getStringWidthFloat(titleLabel.getText())) + 8;
+        titleLabel.setBounds(titleRow.removeFromLeft(titleWidth));
+        titleRow.removeFromLeft(kHeaderTitleSubtitleGap);
+        subtitleLabel.setBounds(titleRow);
 
         auto keyboardArea = bounds.removeFromBottom(kKeyboardHeight).reduced(kMargin, 6);
         if (keyboardComponent != nullptr)

@@ -12,6 +12,7 @@
 #include "UI/FuturisticLookAndFeel.h"
 #include "UI/LfoRateLed.h"
 #include "UI/ModulePanel.h"
+#include "UI/SubOctGroupFrame.h"
 #include "UI/WaveformButton.h"
 #include "Waveform.h"
 
@@ -130,6 +131,7 @@ private:
     juce::TextButton subOct1Button;
     juce::TextButton subOct2Button;
     juce::Label subOctCaption;
+    SubOctGroupFrame subOctGroupFrame;
     juce::TextButton savePresetButton;
     juce::TextButton saveAsPresetButton;
     juce::TextButton loadPresetButton;

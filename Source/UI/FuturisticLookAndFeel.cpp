@@ -5,36 +5,18 @@
 namespace
 {
 constexpr float kStandardTextButtonFontScale = 0.48f;
-constexpr float kPresetActionButtonFontScale = 0.54f;
-constexpr float kPanicButtonFontScale = 0.44f;
-constexpr float kTuneResetButtonFontScale = 0.48f;
+constexpr float kMasterBarButtonFontSize = 11.0f;
 
-void drawAccentActionButton(juce::Graphics& g, juce::Rectangle<float> bounds, bool enabled,
-                            bool highlighted, bool down)
+bool isMasterBarButton(const juce::TextButton& button)
 {
-    if (enabled)
-    {
-        g.setColour(SynthTheme::accent.withAlpha(0.12f));
-        g.fillRoundedRectangle(bounds.expanded(1.5f), 4.0f);
-        g.setColour(highlighted ? SynthTheme::accentDim : SynthTheme::panelFillHi);
-        g.fillRoundedRectangle(bounds, 4.0f);
-        g.setColour((highlighted || down) ? SynthTheme::accent : SynthTheme::accentDim);
-        g.drawRoundedRectangle(bounds, 4.0f, 1.5f);
-        return;
-    }
-
-    g.setColour(SynthTheme::panelFill);
-    g.fillRoundedRectangle(bounds, 4.0f);
-    g.setColour(SynthTheme::accentDim.withAlpha(0.22f));
-    g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
+    const auto& id = button.getComponentID();
+    return id == "panic" || id == "masterBarText" || id == "presetSave" || id == "diffToggle";
 }
 
-void drawAccentActionButtonText(juce::Graphics& g, juce::TextButton& button, int buttonHeight)
+void drawMasterBarButtonText(juce::Graphics& g, juce::TextButton& button, juce::Colour colour)
 {
-    const auto colour = button.isEnabled() ? SynthTheme::accentBright
-                                           : SynthTheme::textDim.withAlpha(0.35f);
     g.setColour(colour);
-    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * kTuneResetButtonFontScale));
+    g.setFont(SynthTheme::monoFont(kMasterBarButtonFontSize));
     g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
 }
 
@@ -58,14 +40,11 @@ void drawPresetSaveButton(juce::Graphics& g, juce::Rectangle<float> bounds, bool
     g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
 }
 
-void drawPresetSaveButtonText(juce::Graphics& g, juce::TextButton& button, int buttonHeight,
-                              bool active)
+void drawPresetSaveButtonText(juce::Graphics& g, juce::TextButton& button, bool active)
 {
     const auto colour = active ? SynthTheme::presetSaveBright
                                : SynthTheme::textDim.withAlpha(0.35f);
-    g.setColour(colour);
-    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPresetActionButtonFontScale));
-    g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
+    drawMasterBarButtonText(g, button, colour);
 }
 
 void drawDiffToggleButton(juce::Graphics& g, juce::Rectangle<float> bounds, bool isOn,
@@ -100,19 +79,17 @@ void drawDiffToggleButton(juce::Graphics& g, juce::Rectangle<float> bounds, bool
     g.drawRoundedRectangle(bounds, 4.0f, 1.0f);
 }
 
-void drawDiffToggleButtonText(juce::Graphics& g, juce::TextButton& button, int buttonHeight,
-                              bool isOn, bool highlighted, bool down)
+void drawDiffToggleButtonText(juce::Graphics& g, juce::TextButton& button, bool isOn,
+                              bool highlighted, bool down)
 {
     juce::Colour colour;
     if (isOn)
         colour = highlighted || down ? SynthTheme::presetSaveBright
-                                       : SynthTheme::presetSaveBright.withAlpha(0.88f);
+                                     : SynthTheme::presetSaveBright.withAlpha(0.88f);
     else
         colour = highlighted || down ? SynthTheme::presetSaveDim : SynthTheme::textDim.withAlpha(0.35f);
 
-    g.setColour(colour);
-    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPresetActionButtonFontScale));
-    g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
+    drawMasterBarButtonText(g, button, colour);
 }
 } // namespace
 
@@ -164,12 +141,6 @@ void FuturisticLookAndFeel::drawButtonBackground(juce::Graphics& g, juce::Button
         return;
     }
 
-    if (button.getComponentID() == "tuneReset")
-    {
-        drawAccentActionButton(g, bounds, button.isEnabled(), highlighted, down);
-        return;
-    }
-
     if (button.getComponentID() == "presetSave")
     {
         drawPresetSaveButton(g, bounds, button.isEnabled(), highlighted, down);
@@ -208,28 +179,33 @@ void FuturisticLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& 
 {
     if (button.getComponentID() == "panic")
     {
-        g.setColour(SynthTheme::panicText);
-        g.setFont(SynthTheme::monoFont(static_cast<float>(button.getHeight()) * kPanicButtonFontScale));
-        g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
-        return;
-    }
-
-    if (button.getComponentID() == "tuneReset")
-    {
-        drawAccentActionButtonText(g, button, button.getHeight());
+        drawMasterBarButtonText(g, button, SynthTheme::panicText);
         return;
     }
 
     if (button.getComponentID() == "presetSave")
     {
-        drawPresetSaveButtonText(g, button, button.getHeight(), button.isEnabled());
+        drawPresetSaveButtonText(g, button, button.isEnabled());
         return;
     }
 
     if (button.getComponentID() == "diffToggle")
     {
-        drawDiffToggleButtonText(g, button, button.getHeight(), button.getToggleState(),
-                                 highlighted, down);
+        drawDiffToggleButtonText(g, button, button.getToggleState(), highlighted, down);
+        return;
+    }
+
+    if (button.getComponentID() == "masterBarText")
+    {
+        if (! button.isEnabled())
+        {
+            drawMasterBarButtonText(g, button, SynthTheme::textDim.withAlpha(0.35f));
+            return;
+        }
+
+        const auto colour = button.findColour(button.getToggleState() ? juce::TextButton::textColourOnId
+                                                                      : juce::TextButton::textColourOffId);
+        drawMasterBarButtonText(g, button, colour);
         return;
     }
 
@@ -242,6 +218,14 @@ void FuturisticLookAndFeel::drawToggleButton(juce::Graphics& g, juce::ToggleButt
     drawButtonBackground(g, button, {}, highlighted, down);
 
     g.setColour(button.getToggleState() ? SynthTheme::accentBright : SynthTheme::textDim);
+
+    if (button.getComponentID() == "lfoRoute")
+    {
+        g.setFont(SynthTheme::monoFont(kMasterBarButtonFontSize));
+        g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
+        return;
+    }
+
     g.setFont(SynthTheme::labelFont(static_cast<float>(button.getHeight()) * 0.42f));
     g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
 }
@@ -406,14 +390,8 @@ void FuturisticLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& label)
 
 juce::Font FuturisticLookAndFeel::getTextButtonFont(juce::TextButton& button, int buttonHeight)
 {
-    if (button.getComponentID() == "tuneReset")
-        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * kTuneResetButtonFontScale);
-
-    if (button.getComponentID() == "presetSave" || button.getComponentID() == "diffToggle")
-        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPresetActionButtonFontScale);
-
-    if (button.getComponentID() == "panic")
-        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPanicButtonFontScale);
+    if (isMasterBarButton(button))
+        return SynthTheme::monoFont(kMasterBarButtonFontSize);
 
     return SynthTheme::labelFont(static_cast<float>(buttonHeight) * kStandardTextButtonFontScale);
 }
