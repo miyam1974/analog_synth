@@ -324,9 +324,11 @@ Other defaults (excerpt): Cutoff **6000 Hz**, Resonance **0.707**, OSC1 **Saw**,
 
 ### MONO mode
 
-When `SynthParameters::getMonoMode()` is ON, `applyMonoNoteStealing` in
-`getNextAudioBlock` inserts Note Offs for other notes before each Note On.
-Behaves like one voice (works with Glide). `applyMonophonicMode` is currently an empty placeholder.
+When `SynthParameters::getMonoMode()` is ON, `applyMonoModeMidi` **legato-retriggers** the
+sounding voice (`SynthVoice::legatoNoteOn`) on Note On instead of injecting Note Offs that
+would reallocate voices and break GLIDE. On Note Off, it moves to the highest held key only when that note differs from the one
+already sounding (releasing a lower key during legato is a no-op). All keys up → `stopNote`.
+`applyMonophonicMode` is currently an empty placeholder.
 
 ---
 
