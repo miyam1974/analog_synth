@@ -31,6 +31,16 @@ void updateBipolarValueLabel(juce::Label& valueLabel, float value, int decimalPl
                                        : SynthTheme::bipolarNegative;
     valueLabel.setColour(juce::Label::textColourId, colour);
 }
+
+juce::String formatEnvTimeSec(float seconds)
+{
+    return juce::String(seconds, 2) + "s";
+}
+
+juce::String formatEnvSustainPercent(float level)
+{
+    return juce::String(level * 100.0f, 0) + "%";
+}
 } // namespace
 
 SynthEditor::SynthEditor()
@@ -155,14 +165,14 @@ SynthEditor::SynthEditor()
                      SynthParameters::setFilterDecay(v);
                      updateFilterEgDisplay();
                  });
-    setupEnvKnob(fSustainCaption, fSustainSlider, fSustainValueLabel, "FS",
-                 SynthParameters::getFilterSustain(),
-                 HelpText::filterSustain(),
-                 [this](float v)
-                 {
-                     SynthParameters::setFilterSustain(v);
-                     updateFilterEgDisplay();
-                 });
+    setupEnvSustainKnob(fSustainCaption, fSustainSlider, fSustainValueLabel, "FS",
+                        SynthParameters::getFilterSustain(),
+                        HelpText::filterSustain(),
+                        [this](float v)
+                        {
+                            SynthParameters::setFilterSustain(v);
+                            updateFilterEgDisplay();
+                        });
     setupEnvKnob(fReleaseCaption, fReleaseSlider, fReleaseValueLabel, "FR",
                  SynthParameters::getFilterRelease(),
                  HelpText::filterRelease(),
@@ -188,14 +198,14 @@ SynthEditor::SynthEditor()
                      SynthParameters::setAmpDecay(v);
                      updateAmpEgDisplay();
                  });
-    setupKnob(aSustainCaption, aSustainSlider, aSustainValueLabel, "S",
-              0.0f, 1.0f, SynthParameters::getAmpSustain(), false, 2,
-              HelpText::ampSustain(),
-              [this](float v)
-              {
-                  SynthParameters::setAmpSustain(v);
-                  updateAmpEgDisplay();
-              });
+    setupEnvSustainKnob(aSustainCaption, aSustainSlider, aSustainValueLabel, "S",
+                        SynthParameters::getAmpSustain(),
+                        HelpText::ampSustain(),
+                        [this](float v)
+                        {
+                            SynthParameters::setAmpSustain(v);
+                            updateAmpEgDisplay();
+                        });
     setupEnvKnob(aReleaseCaption, aReleaseSlider, aReleaseValueLabel, "R",
                  SynthParameters::getAmpRelease(),
                  HelpText::ampRelease(),
@@ -599,6 +609,31 @@ void SynthEditor::setupEnvKnob(juce::Label& caption, juce::Slider& slider, juce:
 {
     setupKnob(caption, slider, valueLabel, name, SynthParameters::minEnvTime,
               SynthParameters::maxEnvTime, defaultSeconds, false, 2, helpText, onChange);
+    slider.onValueChange = [&slider, &valueLabel, onChange]
+    {
+        const auto value = static_cast<float>(slider.getValue());
+        onChange(value);
+        valueLabel.setText(formatEnvTimeSec(value), juce::dontSendNotification);
+    };
+    onChange(defaultSeconds);
+    valueLabel.setText(formatEnvTimeSec(defaultSeconds), juce::dontSendNotification);
+}
+
+void SynthEditor::setupEnvSustainKnob(juce::Label& caption, juce::Slider& slider,
+                                      juce::Label& valueLabel, const juce::String& name,
+                                      float defaultLevel, const juce::String& helpText,
+                                      std::function<void(float)> onChange)
+{
+    setupKnob(caption, slider, valueLabel, name, 0.0f, 1.0f, defaultLevel, false, 2, helpText,
+              onChange);
+    slider.onValueChange = [&slider, &valueLabel, onChange]
+    {
+        const auto value = static_cast<float>(slider.getValue());
+        onChange(value);
+        valueLabel.setText(formatEnvSustainPercent(value), juce::dontSendNotification);
+    };
+    onChange(defaultLevel);
+    valueLabel.setText(formatEnvSustainPercent(defaultLevel), juce::dontSendNotification);
 }
 
 void SynthEditor::setMidiDeviceNames(const juce::StringArray& names, int selectedId)
@@ -644,6 +679,18 @@ void SynthEditor::refreshToggle(juce::ToggleButton& button, bool state)
     button.setToggleState(state, juce::dontSendNotification);
 }
 
+void SynthEditor::refreshEnvTimeSlider(juce::Slider& slider, juce::Label& valueLabel, float seconds)
+{
+    slider.setValue(seconds, juce::dontSendNotification);
+    valueLabel.setText(formatEnvTimeSec(seconds), juce::dontSendNotification);
+}
+
+void SynthEditor::refreshEnvSustainSlider(juce::Slider& slider, juce::Label& valueLabel, float level)
+{
+    slider.setValue(level, juce::dontSendNotification);
+    valueLabel.setText(formatEnvSustainPercent(level), juce::dontSendNotification);
+}
+
 void SynthEditor::refreshUIFromParameters()
 {
     selectOsc1Waveform(static_cast<int>(SynthParameters::getOsc1Waveform()));
@@ -673,15 +720,15 @@ void SynthEditor::refreshUIFromParameters()
                   SynthParameters::getFilterEnvAmount(), 2);
     refreshSlider(filterKeySlider, filterKeyValueLabel, SynthParameters::getFilterKeyTrack(), 2);
 
-    refreshSlider(fAttackSlider, fAttackValueLabel, SynthParameters::getFilterAttack(), 2);
-    refreshSlider(fDecaySlider, fDecayValueLabel, SynthParameters::getFilterDecay(), 2);
-    refreshSlider(fSustainSlider, fSustainValueLabel, SynthParameters::getFilterSustain(), 2);
-    refreshSlider(fReleaseSlider, fReleaseValueLabel, SynthParameters::getFilterRelease(), 2);
+    refreshEnvTimeSlider(fAttackSlider, fAttackValueLabel, SynthParameters::getFilterAttack());
+    refreshEnvTimeSlider(fDecaySlider, fDecayValueLabel, SynthParameters::getFilterDecay());
+    refreshEnvSustainSlider(fSustainSlider, fSustainValueLabel, SynthParameters::getFilterSustain());
+    refreshEnvTimeSlider(fReleaseSlider, fReleaseValueLabel, SynthParameters::getFilterRelease());
 
-    refreshSlider(aAttackSlider, aAttackValueLabel, SynthParameters::getAmpAttack(), 2);
-    refreshSlider(aDecaySlider, aDecayValueLabel, SynthParameters::getAmpDecay(), 2);
-    refreshSlider(aSustainSlider, aSustainValueLabel, SynthParameters::getAmpSustain(), 2);
-    refreshSlider(aReleaseSlider, aReleaseValueLabel, SynthParameters::getAmpRelease(), 2);
+    refreshEnvTimeSlider(aAttackSlider, aAttackValueLabel, SynthParameters::getAmpAttack());
+    refreshEnvTimeSlider(aDecaySlider, aDecayValueLabel, SynthParameters::getAmpDecay());
+    refreshEnvSustainSlider(aSustainSlider, aSustainValueLabel, SynthParameters::getAmpSustain());
+    refreshEnvTimeSlider(aReleaseSlider, aReleaseValueLabel, SynthParameters::getAmpRelease());
 
     refreshSlider(lfoRateSlider, lfoRateValueLabel, SynthParameters::getLfoRateHz(), 2);
     refreshSlider(lfoDepthSlider, lfoDepthValueLabel, SynthParameters::getLfoDepth(), 2);

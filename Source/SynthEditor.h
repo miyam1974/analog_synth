@@ -53,6 +53,8 @@ private:
     void refreshSlider(juce::Slider& slider, juce::Label& valueLabel, float value, int decimals);
     void refreshBipolarSlider(juce::Slider& slider, juce::Label& valueLabel, float value,
                               int decimals);
+    void refreshEnvTimeSlider(juce::Slider& slider, juce::Label& valueLabel, float seconds);
+    void refreshEnvSustainSlider(juce::Slider& slider, juce::Label& valueLabel, float level);
     void refreshToggle(juce::ToggleButton& button, bool state);
 
     std::unordered_map<juce::Component*, juce::String> helpTexts;
@@ -74,6 +76,9 @@ private:
     void setupEnvKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                       const juce::String& name, float defaultSeconds, const juce::String& helpText,
                       std::function<void(float)> onChange);
+    void setupEnvSustainKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
+                             const juce::String& name, float defaultLevel,
+                             const juce::String& helpText, std::function<void(float)> onChange);
     void layoutKnobColumn(juce::Rectangle<int> col, juce::Label& caption, juce::Slider& slider,
                           juce::Label& value);
     void layoutKnobColumnBody(juce::Rectangle<int> col, juce::Slider& slider, juce::Label& value);
