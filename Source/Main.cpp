@@ -275,8 +275,7 @@ private:
         dialog->addButton("Save", 1);
         dialog->addButton("Cancel", 0);
 
-        auto* dialogPtr = dialog.get();
-        dialogPtr->enterModalState(
+        dialog->enterModalState(
             true,
             juce::ModalCallbackFunction::create([this, d = std::move(dialog)](int result) mutable
             {
@@ -287,7 +286,7 @@ private:
                         refreshPresetList();
                 }
             }),
-            true);
+            false);
     }
 
     void promptLoadPresetFile()
