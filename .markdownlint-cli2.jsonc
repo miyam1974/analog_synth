@@ -1,4 +1,11 @@
 {
-  "globs": ["README.md", "README.en.md", "ARCHITECTURE.md", "ARCHITECTURE.en.md", "docs/**/*.md"],
+  "globs": [
+    "README.md",
+    "README.en.md",
+    "ARCHITECTURE.md",
+    "ARCHITECTURE.en.md",
+    "SPEC.md",
+    "docs/**/*.md"
+  ],
   "ignores": ["build/**"]
 }
