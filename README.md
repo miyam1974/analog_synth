@@ -140,8 +140,12 @@ MSVC では `/utf-8` を有効にしており、日本語ヘルプ（`HelpString
 
 - GitHub の **Actions** タブで `Release` ワークフローが成功していること
 - **Releases** タブに新しい ZIP が表示されていること
+- Configure ログに `Visual Studio 18 2026` と表示されていること
+  （`Ninja` や `Visual Studio 17 2022` の場合は古いタグ／Re-run の可能性あり）
 
-同じタグを付け直す場合は、先に GitHub 上の Release / タグを削除するか、別のバージョン番号を使ってください。
+同じタグを付け直す場合は、先に GitHub 上の Release / タグを削除し、
+**修正済み workflow が入った最新の `main` 先端** でタグを付け直してください。
+失敗した Run の **Re-run** だけでは workflow 定義は更新されません。
 
 ### 利用者側の見え方
 

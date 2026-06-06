@@ -143,8 +143,12 @@ A local `cmake --build` does not update the Releases ZIP. A normal push to `main
 
 - On GitHub **Actions**, confirm the `Release` workflow succeeded
 - On **Releases**, confirm the new ZIP is listed
+- In the Configure log, confirm `Visual Studio 18 2026`
+  (if you see `Ninja` or `Visual Studio 17 2022`, the tag may point at an old commit or you re-ran an old job)
 
-To reuse a tag, delete the existing tag/release on GitHub first, or pick a new version number.
+To reuse a tag, delete the existing tag/release on GitHub first, then recreate the tag on the
+**latest `main` commit that includes the fixed workflow**.
+**Re-run** on a failed job alone does not pick up workflow changes.
 
 ### What end users see
 
