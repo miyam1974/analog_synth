@@ -51,6 +51,8 @@ private:
     void restoreStatusLine();
 
     void refreshSlider(juce::Slider& slider, juce::Label& valueLabel, float value, int decimals);
+    void refreshBipolarSlider(juce::Slider& slider, juce::Label& valueLabel, float value,
+                              int decimals);
     void refreshToggle(juce::ToggleButton& button, bool state);
 
     std::unordered_map<juce::Component*, juce::String> helpTexts;
@@ -67,7 +69,8 @@ private:
     void setupKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                    const juce::String& name, float minValue, float maxValue, float defaultValue,
                    bool logarithmic, int decimalPlaces, const juce::String& helpText,
-                   std::function<void(float)> onChange, float step = 0.001f);
+                   std::function<void(float)> onChange, float step = 0.001f,
+                   bool bipolar = false);
     void setupEnvKnob(juce::Label& caption, juce::Slider& slider, juce::Label& valueLabel,
                       const juce::String& name, float defaultSeconds, const juce::String& helpText,
                       std::function<void(float)> onChange);
@@ -80,6 +83,8 @@ private:
     void layoutTuningColumn(juce::Rectangle<int> col, juce::Label& caption, juce::TextButton& resetButton,
                             juce::Slider& slider, juce::Label& value);
     void setupTuneResetButton();
+    void resetBipolarControl(juce::Slider& slider, juce::Label& valueLabel, int decimalPlaces,
+                               std::function<void(float)> setter);
     void layoutMixer(juce::Rectangle<int> area);
     void layoutFilterMain(juce::Rectangle<int> area);
     void layoutFilterEnv(juce::Rectangle<int> area);

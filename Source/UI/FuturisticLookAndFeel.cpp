@@ -122,6 +122,90 @@ void FuturisticLookAndFeel::drawLinearSlider(juce::Graphics& g, int x, int y, in
                      .reduced(isVertical ? width * 0.35f : 0.0f,
                               isVertical ? 0.0f : height * 0.35f);
 
+    const auto isBipolar = slider.getComponentID() == "bipolar";
+
+    if (isBipolar && isVertical)
+    {
+        const auto minValue = static_cast<float>(slider.getMinimum());
+        const auto maxValue = static_cast<float>(slider.getMaximum());
+        const auto zeroProp = (0.0f - minValue) / (maxValue - minValue);
+        const auto zeroY = track.getBottom() - track.getHeight() * zeroProp;
+        const auto value = static_cast<float>(slider.getValue());
+        const auto step = static_cast<float>(slider.getInterval());
+        const auto isZero = SynthTheme::isBipolarNearZero(value, step);
+
+        g.setColour(SynthTheme::panelFillHi);
+        g.fillRoundedRectangle(track, 3.0f);
+
+        {
+            const juce::Rectangle<float> posZone(track.getX(), track.getY(), track.getWidth(),
+                                                 zeroY - track.getY());
+            g.setColour(SynthTheme::bipolarPosGlow.withAlpha(0.18f));
+            g.fillRoundedRectangle(posZone.reduced(1.0f), 2.0f);
+        }
+        {
+            const juce::Rectangle<float> negZone(track.getX(), zeroY, track.getWidth(),
+                                                 track.getBottom() - zeroY);
+            g.setColour(SynthTheme::bipolarNegGlow.withAlpha(0.18f));
+            g.fillRoundedRectangle(negZone.reduced(1.0f), 2.0f);
+        }
+
+        g.setColour(SynthTheme::accentDim.withAlpha(0.45f));
+        g.drawRoundedRectangle(track, 3.0f, 1.0f);
+        g.setColour(SynthTheme::textDim.withAlpha(0.75f));
+        g.drawHorizontalLine(juce::roundToInt(zeroY), track.getX() + 1.0f, track.getRight() - 1.0f);
+
+        juce::Rectangle<float> fillTrack;
+        juce::Colour fillStart;
+        juce::Colour fillEnd;
+        juce::Colour glowColour;
+        juce::Colour thumbColour;
+
+        if (! isZero && value > 0.0f)
+        {
+            fillTrack = { track.getX(), sliderPos, track.getWidth(), zeroY - sliderPos };
+            fillStart = SynthTheme::accentDim;
+            fillEnd = SynthTheme::bipolarPositive;
+            glowColour = SynthTheme::bipolarPosGlow;
+            thumbColour = SynthTheme::bipolarPositive;
+        }
+        else if (! isZero && value < 0.0f)
+        {
+            fillTrack = { track.getX(), zeroY, track.getWidth(), sliderPos - zeroY };
+            fillStart = SynthTheme::bipolarNegative.withAlpha(0.55f);
+            fillEnd = SynthTheme::bipolarNegative;
+            glowColour = SynthTheme::bipolarNegGlow;
+            thumbColour = SynthTheme::bipolarNegative;
+        }
+        else
+        {
+            fillTrack = {};
+            thumbColour = SynthTheme::bipolarNeutral;
+            glowColour = juce::Colours::transparentBlack;
+        }
+
+        if (! fillTrack.isEmpty())
+        {
+            juce::ColourGradient gradient(fillStart, fillTrack.getTopLeft(), fillEnd,
+                                          fillTrack.getBottomRight(), false);
+            g.setGradientFill(gradient);
+            g.fillRoundedRectangle(fillTrack.reduced(1.0f), 2.0f);
+        }
+
+        const auto thumbSize = track.getWidth() + 6.0f;
+        const juce::Rectangle<float> thumb(track.getCentreX() - thumbSize * 0.5f, sliderPos - 4.0f,
+                                         thumbSize, 8.0f);
+
+        if (! glowColour.isTransparent())
+        {
+            g.setColour(glowColour);
+            g.fillRoundedRectangle(thumb.expanded(2.0f), 2.0f);
+        }
+        g.setColour(slider.isEnabled() ? thumbColour : SynthTheme::textDim);
+        g.fillRoundedRectangle(thumb, 2.0f);
+        return;
+    }
+
     g.setColour(SynthTheme::panelFillHi);
     g.fillRoundedRectangle(track, 3.0f);
     g.setColour(SynthTheme::accentDim.withAlpha(0.5f));
