@@ -324,10 +324,11 @@ Other defaults (excerpt): Cutoff **6000 Hz**, Resonance **0.707**, OSC1 **Saw**,
 
 ### MONO mode
 
-When `SynthParameters::getMonoMode()` is ON, `applyMonoModeMidi` **legato-retriggers** the
-sounding voice (`SynthVoice::legatoNoteOn`) on Note On instead of injecting Note Offs that
-would reallocate voices and break GLIDE. On Note Off, it moves to the highest held key only when that note differs from the one
-already sounding (releasing a lower key during legato is a no-op). All keys up → `stopNote`.
+When `SynthParameters::getMonoMode()` is ON, `applyMonoModeMidi` retriggers the sounding voice
+(`SynthVoice::legatoNoteOn`) on Note On. True legato (key still held) skips EG retrigger and
+glides only; a Note On during **release** retriggers attack because `isKeyDown()` is false.
+On Note Off, it moves to the highest held key only when that note differs from the one already
+sounding. All keys up → `stopNote`.
 `applyMonophonicMode` is currently an empty placeholder.
 
 ---

@@ -321,10 +321,11 @@ flowchart LR
 ### MONO モード
 
 `SynthParameters::getMonoMode()` が ON のとき、`applyMonoModeMidi` が Note On を
-**鳴っているボイスへレガート再トリガー**（`SynthVoice::legatoNoteOn`）する。
-先に Note Off を送って別ボイスで鳴らし直すと GLIDE が効かないため、この経路で同一ボイスを維持する。
+**鳴っているボイスへ再トリガー**（`SynthVoice::legatoNoteOn`）する。
+鍵を離さず別キーを押した **レガート** は EG を再立ち上げせず GLIDE のみ。
+**リリース中**に新しい Note On が来た場合は `isKeyDown()` が false のため EG を再トリガーする。
 Note Off 時は他キーが押されていればその最高音へ遷移するが、**すでにその音を鳴らしている
-場合は何もしない**（下のキーだけ離した legato では音色を変えない）。全キー離しで `stopNote`。
+場合は何もしない**。全キー離しで `stopNote`。
 `applyMonophonicMode` は現状プレースホルダ（空実装）。
 
 ---
