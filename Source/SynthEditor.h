@@ -72,6 +72,8 @@ private:
     void setupOsc2Waveforms();
     void selectOsc1Waveform(int index);
     void selectOsc2Waveform(int index);
+    void refreshOsc2WaveformButtons();
+    void refreshOsc2DependentControls();
     void setupLfoRoutes();
     void setupLfo2Routes();
     void setupSubOctaveButtons();

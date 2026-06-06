@@ -320,6 +320,7 @@ juce::var PresetManager::captureCurrentParameters()
     juce::var root(new juce::DynamicObject());
     setField(root, "osc1Waveform", waveformToVar(SynthParameters::getOsc1Waveform()));
     setField(root, "osc2Waveform", waveformToVar(SynthParameters::getOsc2Waveform()));
+    setField(root, "osc2Enabled", SynthParameters::getOsc2Enabled());
     setField(root, "osc1Level", SynthParameters::getOsc1Level());
     setField(root, "osc2Level", SynthParameters::getOsc2Level());
     setField(root, "subLevel", SynthParameters::getSubLevel());
@@ -372,6 +373,11 @@ void PresetManager::applyParametersFromVar(const juce::var& root)
 
     if (get("osc2Waveform").isInt() || get("osc2Waveform").isInt64())
         SynthParameters::setOsc2Waveform(waveformFromVar(get("osc2Waveform")));
+
+    if (get("osc2Enabled").isBool())
+        SynthParameters::setOsc2Enabled(static_cast<bool>(get("osc2Enabled")));
+    else
+        SynthParameters::setOsc2Enabled(true);
 
     auto setFloat = [&](const char* key, auto setter)
     {

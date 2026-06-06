@@ -488,12 +488,48 @@ void SynthEditor::selectOsc2Waveform(int index)
     if (!juce::isPositiveAndBelow(index, static_cast<int>(Waveform::Count)))
         return;
 
-    SynthParameters::setOsc2Waveform(static_cast<Waveform>(index));
+    const auto newWaveform = static_cast<Waveform>(index);
+    const auto current = SynthParameters::getOsc2Waveform();
+
+    if (SynthParameters::getOsc2Enabled() && current == newWaveform)
+        SynthParameters::setOsc2Enabled(false);
+    else
+    {
+        SynthParameters::setOsc2Waveform(newWaveform);
+        SynthParameters::setOsc2Enabled(true);
+    }
+
+    refreshOsc2WaveformButtons();
+}
+
+void SynthEditor::refreshOsc2WaveformButtons()
+{
+    const auto enabled = SynthParameters::getOsc2Enabled();
+    const auto selectedIndex = static_cast<int>(SynthParameters::getOsc2Waveform());
 
     for (int i = 0; i < static_cast<int>(Waveform::Count); ++i)
     {
         if (osc2Buttons[static_cast<size_t>(i)] != nullptr)
-            osc2Buttons[static_cast<size_t>(i)]->setSelected(i == index);
+            osc2Buttons[static_cast<size_t>(i)]->setSelected(enabled && i == selectedIndex);
+    }
+
+    refreshOsc2DependentControls();
+}
+
+void SynthEditor::refreshOsc2DependentControls()
+{
+    const auto enabled = SynthParameters::getOsc2Enabled() && !parametersLocked;
+
+    for (auto* component :
+         { static_cast<juce::Component*>(&osc2DetuneCaption),
+           static_cast<juce::Component*>(&osc2DetuneSlider),
+           static_cast<juce::Component*>(&osc2DetuneValueLabel),
+           static_cast<juce::Component*>(&osc2DetuneResetButton),
+           static_cast<juce::Component*>(&osc2LvlCaption),
+           static_cast<juce::Component*>(&osc2LvlSlider),
+           static_cast<juce::Component*>(&osc2LvlValueLabel) })
+    {
+        component->setEnabled(enabled);
     }
 }
 
@@ -528,6 +564,9 @@ void SynthEditor::resetBipolarControl(juce::Slider& slider, juce::Label& valueLa
                                       int decimalPlaces, std::function<void(float)> setter)
 {
     if (parametersLocked)
+        return;
+
+    if (&slider == &osc2DetuneSlider && !SynthParameters::getOsc2Enabled())
         return;
 
     constexpr float resetValue = 0.0f;
@@ -829,6 +868,8 @@ void SynthEditor::setParametersLocked(bool locked)
         if (button != nullptr)
             button->setEnabled(!locked);
     }
+
+    refreshOsc2DependentControls();
 }
 
 void SynthEditor::refreshSlider(juce::Slider& slider, juce::Label& valueLabel, float value,
@@ -865,7 +906,7 @@ void SynthEditor::refreshEnvSustainSlider(juce::Slider& slider, juce::Label& val
 void SynthEditor::refreshUIFromParameters()
 {
     selectOsc1Waveform(static_cast<int>(SynthParameters::getOsc1Waveform()));
-    selectOsc2Waveform(static_cast<int>(SynthParameters::getOsc2Waveform()));
+    refreshOsc2WaveformButtons();
 
     refreshBipolarSlider(tuneSlider, tuneValueLabel, SynthParameters::getTuneSemis(), 0);
     refreshBipolarSlider(fineSlider, fineValueLabel, SynthParameters::getFineCents(),
