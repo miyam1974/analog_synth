@@ -19,6 +19,10 @@ constexpr int kNumVoices = 16;
 constexpr int kHeaderHeight = 56;
 constexpr int kKeyboardHeight = 96;
 constexpr int kMargin = 14;
+constexpr int kDefaultWindowWidth = 1080;
+constexpr int kDefaultWindowHeight = 680;
+constexpr int kMaxWindowWidth = 4096;
+constexpr int kMaxWindowHeight = 2160;
 } // namespace
 
 class MainComponent : public juce::AudioAppComponent,
@@ -543,18 +547,24 @@ private:
         {
             setUsingNativeTitleBar(true);
             setContentOwned(new MainComponent(session), true);
+            setResizable(true, true);
 
             if (session.valid && session.windowW > 0 && session.windowH > 0)
             {
-                setBounds(session.windowX, session.windowY, session.windowW, session.windowH);
+                setBounds(session.windowX, session.windowY,
+                          juce::jmax(kDefaultWindowWidth, session.windowW),
+                          juce::jmax(kDefaultWindowHeight, session.windowH));
             }
             else
             {
-                centreWithSize(1080, 680);
+                centreWithSize(kDefaultWindowWidth, kDefaultWindowHeight);
             }
 
-            setResizable(true, true);
             setVisible(true);
+            lockMinimumSizeToCurrentBounds();
+
+            // Frame size may not be final until after the native peer finishes layout.
+            juce::MessageManager::callAsync([this] { lockMinimumSizeToCurrentBounds(); });
         }
 
         void closeButtonPressed() override
@@ -563,6 +573,28 @@ private:
         }
 
     private:
+        void lockMinimumSizeToCurrentBounds()
+        {
+            int minW = getWidth();
+            int minH = getHeight();
+            int maxW = kMaxWindowWidth;
+            int maxH = kMaxWindowHeight;
+
+            if (auto* peer = getPeer())
+            {
+                if (const auto frame = peer->getFrameSizeIfPresent())
+                {
+                    const auto borderW = frame->getLeftAndRight();
+                    const auto borderH = frame->getTopAndBottom();
+                    minW += borderW;
+                    minH += borderH;
+                    maxW += borderW;
+                    maxH += borderH;
+                }
+            }
+
+            setResizeLimits(minW, minH, maxW, maxH);
+        }
         JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainWindow)
     };
 
