@@ -22,6 +22,7 @@ public:
     std::function<void(int)> onPresetSelected;
     std::function<void()> onPresetSave;
     std::function<void()> onPresetLoad;
+    std::function<void()> onResetToDefaults;
     std::function<void(bool)> onMonoModeChanged;
     std::function<void()> onPanic;
 
@@ -112,6 +113,7 @@ private:
     juce::TextButton subOct2Button;
     juce::TextButton savePresetButton;
     juce::TextButton loadPresetButton;
+    juce::TextButton resetDefaultsButton;
 
     juce::Label tuneCaption, tuneValueLabel;
     juce::Slider tuneSlider;

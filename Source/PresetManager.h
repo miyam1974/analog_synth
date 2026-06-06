@@ -17,6 +17,7 @@ public:
     int getCurrentIndex() const { return currentIndex; }
 
     void selectPreset(int index);
+    void resetToInitialSettings();
     bool saveCurrentAsUserPreset(const juce::String& name);
     bool loadUserPreset(const juce::String& name);
     juce::File getUserPresetsDirectory() const;

@@ -282,6 +282,15 @@ SynthEditor::SynthEditor()
     addAndMakeVisible(loadPresetButton);
     registerHelp(loadPresetButton, HelpText::presetLoad());
 
+    resetDefaultsButton.setButtonText("RESET");
+    resetDefaultsButton.onClick = [this]
+    {
+        if (onResetToDefaults)
+            onResetToDefaults();
+    };
+    addAndMakeVisible(resetDefaultsButton);
+    registerHelp(resetDefaultsButton, HelpText::presetReset());
+
     monoButton.setButtonText("MONO");
     monoButton.setClickingTogglesState(true);
     monoButton.setToggleState(SynthParameters::getMonoMode(), juce::dontSendNotification);
@@ -675,6 +684,7 @@ void SynthEditor::resized()
     presetCombo.setBounds(masterArea.removeFromLeft(120).reduced(0, 6));
     savePresetButton.setBounds(masterArea.removeFromLeft(48).reduced(2, 8));
     loadPresetButton.setBounds(masterArea.removeFromLeft(48).reduced(2, 8));
+    resetDefaultsButton.setBounds(masterArea.removeFromLeft(52).reduced(2, 8));
     masterCaption.setBounds(masterArea.removeFromRight(56));
     masterValueLabel.setBounds(masterArea.removeFromRight(44));
     masterSlider.setBounds(masterArea.reduced(4, 10));
