@@ -143,6 +143,7 @@ analog_synth/
 | -------- | ---- |
 | [README.md](README.md) / [README.en.md](README.en.md) | 概要・ビルド・使い方 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) / [ARCHITECTURE.en.md](ARCHITECTURE.en.md) | 詳細設計（レイヤ、信号フロー、WASAPI/ASIO、スレッド、UI） |
+| [SPEC.md](SPEC.md) | UI 機能仕様（画面上のコントロール網羅） |
 
 開発・改修時は **[ARCHITECTURE.md](ARCHITECTURE.md)** を参照してください。
 
