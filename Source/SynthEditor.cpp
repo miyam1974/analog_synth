@@ -539,7 +539,7 @@ void SynthEditor::setupEnvKnob(juce::Label& caption, juce::Slider& slider, juce:
               SynthParameters::maxEnvTime, defaultSeconds, false, 2, helpText, onChange);
 }
 
-void SynthEditor::setMidiDeviceNames(const juce::StringArray& names)
+void SynthEditor::setMidiDeviceNames(const juce::StringArray& names, int selectedId)
 {
     midiInputCombo.clear(juce::dontSendNotification);
     midiInputCombo.addItem("All Inputs", 1);
@@ -548,7 +548,9 @@ void SynthEditor::setMidiDeviceNames(const juce::StringArray& names)
     for (const auto& name : names)
         midiInputCombo.addItem(name, id++);
 
-    midiInputCombo.setSelectedId(1, juce::dontSendNotification);
+    midiInputCombo.setSelectedId(selectedId, juce::dontSendNotification);
+    if (midiInputCombo.getSelectedId() != selectedId)
+        midiInputCombo.setSelectedId(1, juce::dontSendNotification);
 }
 
 void SynthEditor::setPresetNames(const juce::StringArray& names, int selectedIndex)

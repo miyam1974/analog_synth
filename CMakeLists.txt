@@ -25,6 +25,7 @@ juce_add_gui_app(AnalogSynth
 target_sources(AnalogSynth
     PRIVATE
         Source/Main.cpp
+        Source/AppState.cpp
         Source/SynthEditor.cpp
         Source/PresetManager.cpp
         Source/SynthVoice.cpp

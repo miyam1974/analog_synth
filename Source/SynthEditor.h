@@ -27,7 +27,7 @@ public:
 
     SynthEditor();
 
-    void setMidiDeviceNames(const juce::StringArray& names);
+    void setMidiDeviceNames(const juce::StringArray& names, int selectedId = 1);
     void setMidiStatusText(const juce::String& text);
     void setPresetNames(const juce::StringArray& names, int selectedIndex);
     void refreshUIFromParameters();

@@ -21,6 +21,11 @@ public:
     bool loadUserPreset(const juce::String& name);
     juce::File getUserPresetsDirectory() const;
 
+    void setCurrentIndex(int index);
+
+    static juce::var captureCurrentParameters();
+    static void applyParametersFromVar(const juce::var& root);
+
 private:
     struct PresetEntry
     {
@@ -31,8 +36,6 @@ private:
 
     void buildFactoryPresets();
     void applyPresetData(const juce::var& data);
-    static juce::var captureCurrentParameters();
-    static void applyParametersFromVar(const juce::var& root);
 
     ParametersChangedCallback onParametersChanged;
     juce::Array<PresetEntry> presets;

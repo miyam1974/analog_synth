@@ -4,6 +4,7 @@
 #include <juce_audio_utils/juce_audio_utils.h>
 #include <juce_gui_extra/juce_gui_extra.h>
 
+#include "AppState.h"
 #include "GlobalLfo.h"
 #include "PresetManager.h"
 #include "SynthEditor.h"
@@ -24,7 +25,7 @@ class MainComponent : public juce::AudioAppComponent,
                       private juce::MidiInputCallback
 {
 public:
-    MainComponent()
+    explicit MainComponent(const AppState::Session& session)
         : presetManager([this] { onPresetParametersChanged(); })
     {
         for (int i = 0; i < kNumVoices; ++i)
@@ -72,13 +73,14 @@ public:
 
         refreshPresetList();
         refreshMidiDeviceList();
-        reconnectMidiInput(1);
+        restoreSession(session);
 
         setSize(1080, 680);
     }
 
     ~MainComponent() override
     {
+        saveSession();
         shutdownAudio();
         closeMidiInputs();
         setLookAndFeel(nullptr);
@@ -310,7 +312,7 @@ private:
         });
     }
 
-    void refreshMidiDeviceList()
+    void refreshMidiDeviceList(int midiComboId = 1)
     {
         midiDeviceNames.clear();
         midiDeviceIdentifiers.clear();
@@ -321,7 +323,71 @@ private:
             midiDeviceIdentifiers.add(device.identifier);
         }
 
-        editor.setMidiDeviceNames(midiDeviceNames);
+        editor.setMidiDeviceNames(midiDeviceNames, midiComboId);
+    }
+
+    int resolveMidiComboId(const AppState::Session& session) const
+    {
+        if (session.midiAllInputs)
+            return 1;
+
+        const int index = midiDeviceIdentifiers.indexOf(session.midiDeviceId);
+        return index >= 0 ? index + 2 : 1;
+    }
+
+    void restoreSession(const AppState::Session& session)
+    {
+        if (!session.valid)
+        {
+            reconnectMidiInput(1);
+            return;
+        }
+
+        if (session.parameters.isObject())
+            PresetManager::applyParametersFromVar(session.parameters);
+
+        presetManager.setCurrentIndex(session.presetIndex);
+
+        const auto midiComboId = resolveMidiComboId(session);
+        refreshMidiDeviceList(midiComboId);
+        reconnectMidiInput(midiComboId);
+
+        editor.refreshUIFromParameters();
+        refreshPresetList();
+        applyMonophonicMode();
+    }
+
+    void saveSession()
+    {
+        AppState::Session session;
+        session.parameters = PresetManager::captureCurrentParameters();
+        session.presetIndex = presetManager.getCurrentIndex();
+
+        const auto midiComboId = editor.getSelectedMidiIndex();
+        if (midiComboId <= 1)
+        {
+            session.midiAllInputs = true;
+        }
+        else
+        {
+            const auto index = midiComboId - 2;
+            if (juce::isPositiveAndBelow(index, midiDeviceIdentifiers.size()))
+            {
+                session.midiAllInputs = false;
+                session.midiDeviceId = midiDeviceIdentifiers[index];
+            }
+        }
+
+        if (auto* window = findParentComponentOfClass<juce::DocumentWindow>())
+        {
+            const auto bounds = window->getBounds();
+            session.windowX = bounds.getX();
+            session.windowY = bounds.getY();
+            session.windowW = bounds.getWidth();
+            session.windowH = bounds.getHeight();
+        }
+
+        AppState::save(session);
     }
 
     void reconnectMidiInput(int comboId)
@@ -408,7 +474,8 @@ public:
 
     void initialise(const juce::String&) override
     {
-        mainWindow.reset(new MainWindow(getApplicationName()));
+        const auto session = AppState::load();
+        mainWindow.reset(new MainWindow(getApplicationName(), session));
     }
 
     void shutdown() override { mainWindow = nullptr; }
@@ -417,12 +484,21 @@ private:
     class MainWindow : public juce::DocumentWindow
     {
     public:
-        explicit MainWindow(juce::String name)
+        explicit MainWindow(juce::String name, const AppState::Session& session)
             : DocumentWindow(name, SynthTheme::background, DocumentWindow::allButtons)
         {
             setUsingNativeTitleBar(true);
-            setContentOwned(new MainComponent(), true);
-            centreWithSize(1080, 680);
+            setContentOwned(new MainComponent(session), true);
+
+            if (session.valid && session.windowW > 0 && session.windowH > 0)
+            {
+                setBounds(session.windowX, session.windowY, session.windowW, session.windowH);
+            }
+            else
+            {
+                centreWithSize(1080, 680);
+            }
+
             setResizable(true, true);
             setVisible(true);
         }

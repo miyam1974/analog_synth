@@ -84,6 +84,12 @@ void PresetManager::selectPreset(int index)
         onParametersChanged();
 }
 
+void PresetManager::setCurrentIndex(int index)
+{
+    if (juce::isPositiveAndBelow(index, presets.size()))
+        currentIndex = index;
+}
+
 bool PresetManager::saveCurrentAsUserPreset(const juce::String& name)
 {
     if (name.trim().isEmpty())
