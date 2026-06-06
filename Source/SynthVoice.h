@@ -29,6 +29,13 @@ public:
 
     void panic();
 
+    /** MONO legato / portamento: retarget pitch on this voice without a full retrigger. */
+    void legatoNoteOn(int midiNoteNumber, float velocity);
+
+    bool isSoundingForMono() const;
+
+    int getCurrentMidiNote() const { return currentMidiNote; }
+
     explicit SynthVoice(int voiceIndex = 0);
 
 private:
@@ -38,6 +45,7 @@ private:
     int voiceIndex = 0;
 
     double frequencyForMidiNote(int midiNote, int octaveOffset) const;
+    void beginPitchGlide(bool useGlide);
     void refreshEnvelopeParameters();
     void updateFilterCutoff(float filterEgLevel, float lfo1Value, float lfo2Value);
     float computeAmpGain(float ampEg) const;

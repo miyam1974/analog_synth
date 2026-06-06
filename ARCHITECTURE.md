@@ -320,9 +320,12 @@ flowchart LR
 
 ### MONO モード
 
-`SynthParameters::getMonoMode()` が ON のとき、`MainComponent::getNextAudioBlock` 内の
-`applyMonoNoteStealing` が Note On の直前に他ノートの Note Off を MIDI バッファへ挿入する。
-実質 1 ボイス相当の挙動（Glide と組み合わせ可能）。`applyMonophonicMode` は現状プレースホルダ（空実装）。
+`SynthParameters::getMonoMode()` が ON のとき、`applyMonoModeMidi` が Note On を
+**鳴っているボイスへレガート再トリガー**（`SynthVoice::legatoNoteOn`）する。
+先に Note Off を送って別ボイスで鳴らし直すと GLIDE が効かないため、この経路で同一ボイスを維持する。
+Note Off 時は他キーが押されていればその最高音へ遷移するが、**すでにその音を鳴らしている
+場合は何もしない**（下のキーだけ離した legato では音色を変えない）。全キー離しで `stopNote`。
+`applyMonophonicMode` は現状プレースホルダ（空実装）。
 
 ---
 

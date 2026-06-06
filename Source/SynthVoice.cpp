@@ -40,33 +40,39 @@ void SynthVoice::publishPlayhead()
 void SynthVoice::startNote(int midiNoteNumber, float velocity,
                            juce::SynthesiserSound*, int)
 {
-    const auto wasActive = isVoiceActive();
     currentMidiNote = midiNoteNumber;
     noteVelocity = juce::jlimit(0.0f, 1.0f, velocity);
-
     targetFrequencyHz = frequencyForMidiNote(midiNoteNumber, 0);
 
-    const auto glideSec = SynthParameters::getGlideSec();
-    const auto useGlide = glideSec > 0.001f && wasActive && currentFrequencyHz > 0.0;
-
-    if (useGlide)
-    {
-        gliding = true;
-        const auto glideSamples = glideSec * sampleRate;
-        glideCoeff = glideSamples > 1.0 ? std::exp(-1.0 / glideSamples) : 0.0;
-    }
-    else
-    {
-        currentFrequencyHz = targetFrequencyHz;
-        gliding = false;
-        osc1Angle = 0.0;
-        osc2Angle = 0.0;
-        subAngle = 0.0;
-    }
+    const auto wasActive = isVoiceActive() && currentFrequencyHz > 0.0;
+    beginPitchGlide(wasActive && SynthParameters::getGlideSec() > 0.001f);
 
     refreshEnvelopeParameters();
     ampEnvelope.noteOn();
     filterEnvelope.noteOn();
+}
+
+void SynthVoice::legatoNoteOn(int midiNoteNumber, float velocity)
+{
+    const auto wasSounding = isSoundingForMono();
+    setKeyDown(true);
+    currentMidiNote = midiNoteNumber;
+    noteVelocity = juce::jlimit(0.0f, 1.0f, velocity);
+    targetFrequencyHz = frequencyForMidiNote(midiNoteNumber, 0);
+
+    beginPitchGlide(wasSounding && SynthParameters::getGlideSec() > 0.001f);
+    refreshEnvelopeParameters();
+
+    if (!wasSounding)
+    {
+        ampEnvelope.noteOn();
+        filterEnvelope.noteOn();
+    }
+}
+
+bool SynthVoice::isSoundingForMono() const
+{
+    return ampEnvelope.isActive() && currentFrequencyHz > 0.0;
 }
 
 void SynthVoice::stopNote(float, bool allowTailOff)
@@ -209,6 +215,23 @@ void SynthVoice::setCurrentPlaybackSampleRate(double newRate)
 
     filter.prepare(spec);
     filter.setType(juce::dsp::StateVariableTPTFilterType::lowpass);
+}
+
+void SynthVoice::beginPitchGlide(bool useGlide)
+{
+    if (useGlide)
+    {
+        gliding = true;
+        const auto glideSamples = SynthParameters::getGlideSec() * sampleRate;
+        glideCoeff = glideSamples > 1.0 ? std::exp(-1.0 / glideSamples) : 0.0;
+        return;
+    }
+
+    currentFrequencyHz = targetFrequencyHz;
+    gliding = false;
+    osc1Angle = 0.0;
+    osc2Angle = 0.0;
+    subAngle = 0.0;
 }
 
 double SynthVoice::frequencyForMidiNote(int midiNote, int octaveOffset) const

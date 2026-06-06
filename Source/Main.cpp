@@ -101,7 +101,7 @@ public:
         juce::MidiBuffer incomingMidi;
         midiCollector.removeNextBlockOfMessages(incomingMidi, bufferToFill.numSamples);
         keyboardState.processNextMidiBuffer(incomingMidi, 0, bufferToFill.numSamples, true);
-        applyMonoNoteStealing(incomingMidi);
+        applyMonoModeMidi(incomingMidi);
         synth.renderNextBlock(*bufferToFill.buffer, incomingMidi, 0, bufferToFill.numSamples);
 
         const auto master = SynthParameters::getMasterLevel();
@@ -148,31 +148,110 @@ private:
 
     void applyMonophonicMode() {}
 
-    void applyMonoNoteStealing(juce::MidiBuffer& midi)
+    SynthVoice* findMonoSoundingVoice()
+    {
+        for (int i = 0; i < synth.getNumVoices(); ++i)
+        {
+            if (auto* voice = dynamic_cast<SynthVoice*>(synth.getVoice(i)))
+            {
+                if (voice->isSoundingForMono())
+                    return voice;
+            }
+        }
+
+        return nullptr;
+    }
+
+    void silenceOtherVoices(const SynthVoice* keep)
+    {
+        for (int i = 0; i < synth.getNumVoices(); ++i)
+        {
+            if (auto* voice = dynamic_cast<SynthVoice*>(synth.getVoice(i)))
+            {
+                if (voice != keep && voice->isSoundingForMono())
+                    voice->panic();
+            }
+        }
+    }
+
+    void applyMonoModeMidi(juce::MidiBuffer& midi)
     {
         if (!SynthParameters::getMonoMode())
             return;
 
-        juce::MidiBuffer withStolenNotes;
+        juce::MidiBuffer processed;
+
         for (const auto metadata : midi)
         {
             const auto& message = metadata.getMessage();
+            const auto samplePos = metadata.samplePosition;
+            const int channel = message.getChannel();
+
             if (message.isNoteOn())
             {
+                if (auto* voice = findMonoSoundingVoice())
+                {
+                    silenceOtherVoices(voice);
+                    voice->legatoNoteOn(message.getNoteNumber(), message.getFloatVelocity());
+                    continue;
+                }
+
                 for (int note = 0; note < 128; ++note)
                 {
-                    if (note == message.getNoteNumber())
-                        continue;
-
-                    withStolenNotes.addEvent(juce::MidiMessage::noteOff(message.getChannel(), note),
-                                             metadata.samplePosition);
+                    if (note != message.getNoteNumber())
+                    {
+                        processed.addEvent(juce::MidiMessage::noteOff(channel, note, 0.0f),
+                                             samplePos);
+                    }
                 }
-            }
 
-            withStolenNotes.addEvent(message, metadata.samplePosition);
+                processed.addEvent(message, samplePos);
+            }
+            else if (message.isNoteOff())
+            {
+                int heldNote = -1;
+                for (int note = 127; note >= 0; --note)
+                {
+                    if (keyboardState.isNoteOnForChannels(0xffff, note))
+                    {
+                        heldNote = note;
+                        break;
+                    }
+                }
+
+                if (heldNote >= 0)
+                {
+                    if (auto* voice = findMonoSoundingVoice())
+                    {
+                        // Only retrigger when returning to a different held note (e.g. release
+                        // the top key while a lower key remains). Releasing an already-silent
+                        // key must not touch the sounding voice.
+                        if (heldNote != voice->getCurrentMidiNote())
+                        {
+                            silenceOtherVoices(voice);
+                            voice->legatoNoteOn(heldNote, 1.0f);
+                        }
+                    }
+
+                    continue;
+                }
+
+                if (auto* voice = findMonoSoundingVoice())
+                {
+                    voice->setKeyDown(false);
+                    voice->stopNote(message.getFloatVelocity(), true);
+                    continue;
+                }
+
+                processed.addEvent(message, samplePos);
+            }
+            else
+            {
+                processed.addEvent(message, samplePos);
+            }
         }
 
-        midi = withStolenNotes;
+        midi.swapWith(processed);
     }
 
     void onPresetParametersChanged()
