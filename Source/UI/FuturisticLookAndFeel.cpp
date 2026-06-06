@@ -4,6 +4,11 @@
 
 namespace
 {
+constexpr float kStandardTextButtonFontScale = 0.48f;
+constexpr float kPresetActionButtonFontScale = 0.54f;
+constexpr float kPanicButtonFontScale = 0.44f;
+constexpr float kTuneResetButtonFontScale = 0.48f;
+
 void drawAccentActionButton(juce::Graphics& g, juce::Rectangle<float> bounds, bool enabled,
                             bool highlighted, bool down)
 {
@@ -29,7 +34,7 @@ void drawAccentActionButtonText(juce::Graphics& g, juce::TextButton& button, int
     const auto colour = button.isEnabled() ? SynthTheme::accentBright
                                            : SynthTheme::textDim.withAlpha(0.35f);
     g.setColour(colour);
-    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.48f));
+    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * kTuneResetButtonFontScale));
     g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
 }
 
@@ -59,7 +64,7 @@ void drawPresetSaveButtonText(juce::Graphics& g, juce::TextButton& button, int b
     const auto colour = active ? SynthTheme::presetSaveBright
                                : SynthTheme::textDim.withAlpha(0.35f);
     g.setColour(colour);
-    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.48f));
+    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPresetActionButtonFontScale));
     g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
 }
 
@@ -106,7 +111,7 @@ void drawDiffToggleButtonText(juce::Graphics& g, juce::TextButton& button, int b
         colour = highlighted || down ? SynthTheme::presetSaveDim : SynthTheme::textDim.withAlpha(0.35f);
 
     g.setColour(colour);
-    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.48f));
+    g.setFont(SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPresetActionButtonFontScale));
     g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
 }
 } // namespace
@@ -204,7 +209,7 @@ void FuturisticLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& 
     if (button.getComponentID() == "panic")
     {
         g.setColour(SynthTheme::panicText);
-        g.setFont(SynthTheme::monoFont(static_cast<float>(button.getHeight()) * 0.38f));
+        g.setFont(SynthTheme::monoFont(static_cast<float>(button.getHeight()) * kPanicButtonFontScale));
         g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
         return;
     }
@@ -401,14 +406,16 @@ void FuturisticLookAndFeel::drawLabel(juce::Graphics& g, juce::Label& label)
 
 juce::Font FuturisticLookAndFeel::getTextButtonFont(juce::TextButton& button, int buttonHeight)
 {
-    if (button.getComponentID() == "tuneReset" || button.getComponentID() == "presetSave"
-        || button.getComponentID() == "diffToggle")
-        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.48f);
+    if (button.getComponentID() == "tuneReset")
+        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * kTuneResetButtonFontScale);
+
+    if (button.getComponentID() == "presetSave" || button.getComponentID() == "diffToggle")
+        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPresetActionButtonFontScale);
 
     if (button.getComponentID() == "panic")
-        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * 0.38f);
+        return SynthTheme::monoFont(static_cast<float>(buttonHeight) * kPanicButtonFontScale);
 
-    return SynthTheme::labelFont(static_cast<float>(buttonHeight) * 0.42f);
+    return SynthTheme::labelFont(static_cast<float>(buttonHeight) * kStandardTextButtonFontScale);
 }
 
 juce::Font FuturisticLookAndFeel::getLabelFont(juce::Label&)

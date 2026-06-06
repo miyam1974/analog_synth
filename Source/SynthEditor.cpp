@@ -11,7 +11,12 @@ constexpr int kFooterHeight = 84;
 constexpr int kSystemControlRowHeight = 34;
 constexpr int kPanelGap = 8;
 constexpr int kMasterRowHeight = 36;
-constexpr int kCentDecimalPlaces = 3;
+constexpr int kCentDecimalPlaces = 2;
+constexpr float kSectionTagFontSize = 11.0f;
+constexpr int kSectionTagRowHeight = 16;
+constexpr float kKnobCaptionFontSize = 11.0f;
+constexpr float kKnobValueFontSize = 11.0f;
+constexpr float kHelpMessageFontSize = 14.0f;
 
 void updateBipolarValueLabel(juce::Label& valueLabel, float value, int decimalPlaces)
 {
@@ -57,13 +62,13 @@ SynthEditor::SynthEditor()
         addAndMakeVisible(panel);
 
     osc1Tag.setText("OSC1", juce::dontSendNotification);
-    osc1Tag.setFont(SynthTheme::monoFont(9.0f));
+    osc1Tag.setFont(SynthTheme::monoFont(kSectionTagFontSize));
     osc1Tag.setColour(juce::Label::textColourId, SynthTheme::textDim);
     osc1Tag.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(osc1Tag);
 
     osc2Tag.setText("OSC2", juce::dontSendNotification);
-    osc2Tag.setFont(SynthTheme::monoFont(9.0f));
+    osc2Tag.setFont(SynthTheme::monoFont(kSectionTagFontSize));
     osc2Tag.setColour(juce::Label::textColourId, SynthTheme::textDim);
     osc2Tag.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(osc2Tag);
@@ -79,12 +84,12 @@ SynthEditor::SynthEditor()
               SynthParameters::minFineCents, SynthParameters::maxFineCents, 0.0f, false,
               kCentDecimalPlaces,
               HelpText::fine(),
-              [](float v) { SynthParameters::setFineCents(v); }, 0.001f, true);
+              [](float v) { SynthParameters::setFineCents(v); }, 0.01f, true);
     setupKnob(osc2DetuneCaption, osc2DetuneSlider, osc2DetuneValueLabel, "DET2",
               SynthParameters::minOsc2DetuneCents, SynthParameters::maxOsc2DetuneCents, 0.0f,
               false, kCentDecimalPlaces,
               HelpText::osc2Detune(),
-              [](float v) { SynthParameters::setOsc2DetuneCents(v); }, 0.001f, true);
+              [](float v) { SynthParameters::setOsc2DetuneCents(v); }, 0.01f, true);
     setupTuneResetButton();
 
     setupKnob(osc1LvlCaption, osc1LvlSlider, osc1LvlValueLabel, "OSC1",
@@ -107,7 +112,7 @@ SynthEditor::SynthEditor()
     for (auto* caption : { &osc1LvlCaption, &osc2LvlCaption, &subLvlCaption, &noiseCaption })
     {
         caption->setMinimumHorizontalScale(0.65f);
-        caption->setFont(SynthTheme::monoFont(9.0f));
+        caption->setFont(SynthTheme::monoFont(kSectionTagFontSize));
     }
 
     setupKnob(glideCaption, glideSlider, glideValueLabel, "GLIDE",
@@ -219,7 +224,7 @@ SynthEditor::SynthEditor()
     registerHelp(lfoRateLed, HelpText::lfoRateLed());
 
     lfo1Tag.setText("LFO1", juce::dontSendNotification);
-    lfo1Tag.setFont(SynthTheme::monoFont(9.0f));
+    lfo1Tag.setFont(SynthTheme::monoFont(kSectionTagFontSize));
     lfo1Tag.setColour(juce::Label::textColourId, SynthTheme::accentDim);
     lfo1Tag.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(lfo1Tag);
@@ -238,7 +243,7 @@ SynthEditor::SynthEditor()
     registerHelp(lfo2RateLed, HelpText::lfo2RateLed());
 
     lfo2Tag.setText("LFO2", juce::dontSendNotification);
-    lfo2Tag.setFont(SynthTheme::monoFont(9.0f));
+    lfo2Tag.setFont(SynthTheme::monoFont(kSectionTagFontSize));
     lfo2Tag.setColour(juce::Label::textColourId, SynthTheme::accentDim);
     lfo2Tag.setJustificationType(juce::Justification::centredLeft);
     addAndMakeVisible(lfo2Tag);
@@ -257,7 +262,7 @@ SynthEditor::SynthEditor()
          { &lfoRateCaption, &lfoDepthCaption, &lfo2RateCaption, &lfo2DepthCaption })
     {
         caption->setMinimumHorizontalScale(0.65f);
-        caption->setFont(SynthTheme::monoFont(9.0f));
+        caption->setFont(SynthTheme::monoFont(kSectionTagFontSize));
     }
 
     masterCaption.setText("MASTER", juce::dontSendNotification);
@@ -285,7 +290,7 @@ SynthEditor::SynthEditor()
     addAndMakeVisible(masterValueLabel);
 
     presetLabel.setText("PRESET", juce::dontSendNotification);
-    presetLabel.setFont(SynthTheme::monoFont(10.0f));
+    presetLabel.setFont(SynthTheme::monoFont(11.0f));
     presetLabel.setColour(juce::Label::textColourId, SynthTheme::textDim);
     addAndMakeVisible(presetLabel);
 
@@ -388,7 +393,7 @@ SynthEditor::SynthEditor()
     };
     addAndMakeVisible(midiInputCombo);
 
-    systemMessageLabel.setFont(SynthTheme::systemMessageFont(12.0f));
+    systemMessageLabel.setFont(SynthTheme::systemMessageFont(kHelpMessageFontSize));
     systemMessageLabel.setColour(juce::Label::textColourId, SynthTheme::textDim);
     systemMessageLabel.setJustificationType(juce::Justification::centredLeft);
     systemMessageLabel.setComponentID("helpMessage");
@@ -536,7 +541,7 @@ void SynthEditor::setupSubOctaveButtons()
 
     subOctCaption.setText("SUB", juce::dontSendNotification);
     subOctCaption.setJustificationType(juce::Justification::centred);
-    subOctCaption.setFont(SynthTheme::monoFont(9.0f));
+    subOctCaption.setFont(SynthTheme::monoFont(kSectionTagFontSize));
     subOctCaption.setColour(juce::Label::textColourId, SynthTheme::textDim);
     addAndMakeVisible(subOctCaption);
 
@@ -631,7 +636,7 @@ void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::La
     {
         caption.setText(name, juce::dontSendNotification);
         caption.setJustificationType(juce::Justification::centred);
-        caption.setFont(SynthTheme::monoFont(10.0f));
+        caption.setFont(SynthTheme::monoFont(kKnobCaptionFontSize));
         caption.setColour(juce::Label::textColourId, SynthTheme::textDim);
         addAndMakeVisible(caption);
     }
@@ -657,7 +662,7 @@ void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::La
     addAndMakeVisible(slider);
 
     valueLabel.setJustificationType(juce::Justification::centred);
-    valueLabel.setFont(SynthTheme::monoFont(10.0f));
+    valueLabel.setFont(SynthTheme::monoFont(kKnobValueFontSize));
     valueLabel.setColour(juce::Label::textColourId,
                          bipolar ? SynthTheme::bipolarNeutral : SynthTheme::accentBright);
     addAndMakeVisible(valueLabel);
@@ -946,9 +951,9 @@ void SynthEditor::resized()
 
     const auto totalWidth = bounds.getWidth();
     const int wOsc = totalWidth * 21 / 100;
-    const int wMixer = totalWidth * 16 / 100;
-    const int wFilter = totalWidth * 26 / 100;
-    const int wAmp = totalWidth * 18 / 100;
+    const int wMixer = totalWidth * 17 / 100;
+    const int wFilter = totalWidth * 23 / 100;
+    const int wAmp = totalWidth * 19 / 100;
     const int wLfo = totalWidth - wOsc - wMixer - wFilter - wAmp - kPanelGap * 4;
 
     auto placePanel = [&](ModulePanel& panel, int width)
@@ -961,9 +966,9 @@ void SynthEditor::resized()
 
     auto oscArea = placePanel(oscPanel, wOsc);
     oscArea.removeFromTop(2);
-    osc1Tag.setBounds(oscArea.removeFromTop(14));
+    osc1Tag.setBounds(oscArea.removeFromTop(kSectionTagRowHeight));
     layoutOsc1Waveforms(oscArea.removeFromTop(58));
-    osc2Tag.setBounds(oscArea.removeFromTop(14));
+    osc2Tag.setBounds(oscArea.removeFromTop(kSectionTagRowHeight));
     layoutOsc2Waveforms(oscArea.removeFromTop(50));
     layoutOscTuning(oscArea);
 
@@ -982,7 +987,7 @@ void SynthEditor::layoutKnobColumn(juce::Rectangle<int> col, juce::Label& captio
                                    juce::Slider& slider, juce::Label& value)
 {
     auto column = col.reduced(2, 0);
-    caption.setBounds(column.removeFromTop(16));
+    caption.setBounds(column.removeFromTop(17));
     layoutKnobColumnBody(column, slider, value);
 }
 
@@ -990,7 +995,7 @@ void SynthEditor::layoutKnobColumnBody(juce::Rectangle<int> col, juce::Slider& s
                                        juce::Label& value)
 {
     auto column = col.reduced(2, 0);
-    value.setBounds(column.removeFromBottom(18));
+    value.setBounds(column.removeFromBottom(19));
     slider.setBounds(column.reduced(4, 2));
 }
 
@@ -1019,11 +1024,11 @@ void SynthEditor::layoutTuningColumn(juce::Rectangle<int> col, juce::Label& capt
                                      juce::Label& value)
 {
     auto column = col.reduced(2, 0);
-    caption.setBounds(column.removeFromTop(16));
+    caption.setBounds(column.removeFromTop(17));
     resetButton.setBounds(column.removeFromTop(26).reduced(2, 0));
     resetButton.toFront(false);
 
-    value.setBounds(column.removeFromBottom(18));
+    value.setBounds(column.removeFromBottom(19));
     slider.setBounds(column.reduced(4, 2));
 }
 
@@ -1044,7 +1049,7 @@ void SynthEditor::layoutMixer(juce::Rectangle<int> area)
     auto levels = area.removeFromTop(area.getHeight() * 55 / 100);
     const auto colW = levels.getWidth() / 4;
 
-    auto captionRow = levels.removeFromTop(16);
+    auto captionRow = levels.removeFromTop(17);
     osc1LvlCaption.setBounds(captionRow.removeFromLeft(colW));
     osc2LvlCaption.setBounds(captionRow.removeFromLeft(colW));
     subLvlCaption.setBounds(captionRow.removeFromLeft(colW));
@@ -1056,7 +1061,7 @@ void SynthEditor::layoutMixer(juce::Rectangle<int> area)
     layoutKnobColumnBody(levels, noiseSlider, noiseValueLabel);
 
     auto subOctBlock = area.removeFromTop(40).reduced(2, 0);
-    subOctCaption.setBounds(subOctBlock.removeFromTop(14));
+    subOctCaption.setBounds(subOctBlock.removeFromTop(kSectionTagRowHeight));
     const auto half = subOctBlock.getWidth() / 2;
     subOct1Button.setBounds(subOctBlock.removeFromLeft(half).reduced(2));
     subOct2Button.setBounds(subOctBlock.reduced(2));
@@ -1107,13 +1112,13 @@ void SynthEditor::layoutLfoSection(juce::Rectangle<int> area, juce::Label& tag, 
                                    juce::ToggleButton& toPitch, juce::ToggleButton& toFilter,
                                    juce::ToggleButton& toAmp)
 {
-    tag.setBounds(area.removeFromTop(14));
+    tag.setBounds(area.removeFromTop(kSectionTagRowHeight));
     area.removeFromTop(2);
 
     auto knobs = area.removeFromTop(area.getHeight() * 55 / 100);
     const auto colW = knobs.getWidth() / 2;
 
-    auto labels = knobs.removeFromTop(16);
+    auto labels = knobs.removeFromTop(17);
     rateCaption.setBounds(labels.removeFromLeft(colW));
     depthCaption.setBounds(labels);
 
@@ -1239,7 +1244,7 @@ void SynthEditor::showHelp(const juce::String& text)
 {
     showingHelp = true;
     systemMessageLabel.setColour(juce::Label::textColourId, SynthTheme::textPrimary);
-    systemMessageLabel.setFont(SynthTheme::systemMessageFont(text.containsChar('\n') ? 11.0f : 12.0f));
+    systemMessageLabel.setFont(SynthTheme::systemMessageFont(kHelpMessageFontSize));
     systemMessageLabel.setText(text, juce::dontSendNotification);
     systemMessageLabel.repaint();
 }
@@ -1247,7 +1252,7 @@ void SynthEditor::showHelp(const juce::String& text)
 void SynthEditor::restoreStatusLine()
 {
     showingHelp = false;
-    systemMessageLabel.setFont(SynthTheme::systemMessageFont(12.0f));
+    systemMessageLabel.setFont(SynthTheme::systemMessageFont(kHelpMessageFontSize));
     systemMessageLabel.setColour(juce::Label::textColourId, SynthTheme::textDim);
     systemMessageLabel.setText(midiStatusBackup, juce::dontSendNotification);
 }

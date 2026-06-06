@@ -117,14 +117,14 @@ void AdsrDisplay::paint(juce::Graphics& g)
     g.drawVerticalLine(juce::roundToInt(xAt(attack + decay + kSustainVisualWeight)), inner.getY(),
                        inner.getBottom());
 
-    g.setFont(SynthTheme::monoFont(8.0f));
+    g.setFont(SynthTheme::monoFont(9.0f));
     g.setColour(SynthTheme::textDim);
 
-    const auto labelY = bounds.getBottom() - 9.0f;
+    const auto labelY = bounds.getBottom() - 10.0f;
     const auto drawPhaseLabel = [&](float start, float end, const char* text)
     {
         const auto cx = inner.getX() + inner.getWidth() * ((start + end) * 0.5f / totalTime);
-        g.drawText(text, juce::Rectangle<float>(cx - 14.0f, labelY, 28.0f, 10.0f),
+        g.drawText(text, juce::Rectangle<float>(cx - 14.0f, labelY, 28.0f, 11.0f),
                    juce::Justification::centred, false);
     };
 
