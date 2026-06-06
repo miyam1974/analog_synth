@@ -309,6 +309,7 @@ SynthEditor::SynthEditor()
     presetLabel.setColour(juce::Label::textColourId, SynthTheme::textDim);
     addAndMakeVisible(presetLabel);
 
+    presetCombo.setComponentID("systemCombo");
     presetCombo.onChange = [this]
     {
         if (onPresetSelected)
@@ -402,6 +403,7 @@ SynthEditor::SynthEditor()
     midiLabel.setColour(juce::Label::textColourId, SynthTheme::textPrimary);
     addAndMakeVisible(midiLabel);
 
+    midiInputCombo.setComponentID("systemCombo");
     midiInputCombo.setTextWhenNothingSelected("No devices");
     midiInputCombo.setJustificationType(juce::Justification::centredLeft);
     midiInputCombo.onChange = [this]

@@ -6,6 +6,7 @@ namespace
 {
 constexpr float kStandardTextButtonFontScale = 0.48f;
 constexpr float kMasterBarButtonFontSize = 11.0f;
+constexpr int kSystemComboLeftPadding = 8;
 
 bool isMasterBarButton(const juce::TextButton& button)
 {
@@ -399,4 +400,11 @@ juce::Font FuturisticLookAndFeel::getTextButtonFont(juce::TextButton& button, in
 juce::Font FuturisticLookAndFeel::getLabelFont(juce::Label&)
 {
     return SynthTheme::labelFont();
+}
+
+void FuturisticLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
+{
+    const int left = box.getComponentID() == "systemCombo" ? kSystemComboLeftPadding : 1;
+    label.setBounds(left, 1, box.getWidth() - 29 - left, box.getHeight() - 2);
+    label.setFont(getComboBoxFont(box));
 }
