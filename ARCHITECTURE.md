@@ -422,6 +422,7 @@ analog_synth/
 ├── README.en.md            # Getting started（English）
 ├── ARCHITECTURE.md         # 本ドキュメント（日本語）
 ├── ARCHITECTURE.en.md      # Architecture（English）
+├── SPEC.md                 # UI 機能仕様
 ├── LICENSE                 # MIT
 ├── docs/
 │   └── images/

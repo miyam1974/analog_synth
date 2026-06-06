@@ -110,6 +110,7 @@ analog_synth/
 ├── README.en.md
 ├── ARCHITECTURE.md
 ├── ARCHITECTURE.en.md
+├── SPEC.md
 ├── LICENSE
 ├── docs/
 │   └── images/
@@ -144,6 +145,7 @@ analog_synth/
 | ---- | -------- |
 | [README.md](README.md) / [README.en.md](README.en.md) | Overview, build, usage |
 | [ARCHITECTURE.md](ARCHITECTURE.md) / [ARCHITECTURE.en.md](ARCHITECTURE.en.md) | Design (layers, signal flow, WASAPI/ASIO, threads, UI) |
+| [SPEC.md](SPEC.md) | UI feature spec (on-screen controls) |
 
 For development, see **[ARCHITECTURE.en.md](ARCHITECTURE.en.md)**.
 

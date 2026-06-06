@@ -109,6 +109,7 @@ analog_synth/
 ├── README.en.md
 ├── ARCHITECTURE.md
 ├── ARCHITECTURE.en.md
+├── SPEC.md
 ├── LICENSE
 ├── docs/
 │   └── images/

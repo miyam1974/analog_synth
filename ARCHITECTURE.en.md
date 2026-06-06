@@ -427,6 +427,7 @@ analog_synth/
 ├── README.en.md            # getting started (English)
 ├── ARCHITECTURE.md         # this doc (Japanese)
 ├── ARCHITECTURE.en.md      # this doc (English)
+├── SPEC.md                 # UI feature spec
 ├── LICENSE                 # MIT
 ├── docs/
 │   └── images/
