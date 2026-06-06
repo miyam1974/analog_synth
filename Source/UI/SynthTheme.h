@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cmath>
+
 #include <juce_gui_basics/juce_gui_basics.h>
 
 namespace SynthTheme
@@ -20,6 +22,24 @@ inline const juce::Colour panicFillHi    { 0xff6a1a22 };
 inline const juce::Colour panicBorder    { 0xffe04050 };
 inline const juce::Colour panicText       { 0xffffa8b0 };
 inline const juce::Colour panicGlow       { 0x88ff3040 };
+inline const juce::Colour bipolarPositive  { 0xffd8ff66 };
+inline const juce::Colour bipolarNegative  { 0xff50c8ff };
+inline const juce::Colour bipolarNeutral   { 0xff6a8050 };
+inline const juce::Colour bipolarPosGlow   { 0x55adff2f };
+inline const juce::Colour bipolarNegGlow   { 0x5550c8ff };
+
+inline bool isBipolarNearZero(float value, float step)
+{
+    if (step > 0.0f)
+        return std::abs(value) <= step * 0.5f;
+
+    return juce::approximatelyEqual(value, 0.0f);
+}
+
+inline float bipolarStepForDecimals(int decimalPlaces)
+{
+    return std::pow(10.0f, -static_cast<float>(juce::jmax(0, decimalPlaces)));
+}
 
 inline juce::Font titleFont(float size = 15.0f)
 {

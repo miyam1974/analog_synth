@@ -11,6 +11,26 @@ constexpr int kFooterHeight = 84;
 constexpr int kSystemControlRowHeight = 34;
 constexpr int kPanelGap = 8;
 constexpr int kMasterRowHeight = 36;
+constexpr int kCentDecimalPlaces = 3;
+
+void updateBipolarValueLabel(juce::Label& valueLabel, float value, int decimalPlaces)
+{
+    const auto step = SynthTheme::bipolarStepForDecimals(decimalPlaces);
+    const auto isZero = SynthTheme::isBipolarNearZero(value, step);
+
+    juce::String text;
+    if (! isZero && value > 0.0f)
+        text = "+" + juce::String(value, decimalPlaces);
+    else
+        text = juce::String(isZero ? 0.0f : value, decimalPlaces);
+
+    valueLabel.setText(text, juce::dontSendNotification);
+
+    const auto colour = isZero          ? SynthTheme::bipolarNeutral
+                        : value > 0.0f ? SynthTheme::bipolarPositive
+                                       : SynthTheme::bipolarNegative;
+    valueLabel.setColour(juce::Label::textColourId, colour);
+}
 } // namespace
 
 SynthEditor::SynthEditor()
@@ -44,16 +64,17 @@ SynthEditor::SynthEditor()
     setupKnob(tuneCaption, tuneSlider, tuneValueLabel, "TUNE",
               SynthParameters::minTuneSemis, SynthParameters::maxTuneSemis, 0.0f, false, 0,
               HelpText::tune(),
-              [](float v) { SynthParameters::setTuneSemis(v); }, 1.0f);
+              [](float v) { SynthParameters::setTuneSemis(v); }, 1.0f, true);
     setupKnob(fineCaption, fineSlider, fineValueLabel, "FINE",
-              SynthParameters::minFineCents, SynthParameters::maxFineCents, 0.0f, false, 0,
+              SynthParameters::minFineCents, SynthParameters::maxFineCents, 0.0f, false,
+              kCentDecimalPlaces,
               HelpText::fine(),
-              [](float v) { SynthParameters::setFineCents(v); });
+              [](float v) { SynthParameters::setFineCents(v); }, 0.001f, true);
     setupKnob(osc2DetuneCaption, osc2DetuneSlider, osc2DetuneValueLabel, "DET2",
               SynthParameters::minOsc2DetuneCents, SynthParameters::maxOsc2DetuneCents, 0.0f,
-              false, 0,
+              false, kCentDecimalPlaces,
               HelpText::osc2Detune(),
-              [](float v) { SynthParameters::setOsc2DetuneCents(v); });
+              [](float v) { SynthParameters::setOsc2DetuneCents(v); }, 0.001f, true);
     setupTuneResetButton();
 
     setupKnob(osc1LvlCaption, osc1LvlSlider, osc1LvlValueLabel, "OSC1",
@@ -401,26 +422,41 @@ void SynthEditor::selectOsc2Waveform(int index)
 void SynthEditor::setupTuneResetButton()
 {
     auto setupReset = [this](juce::TextButton& button, juce::Slider& slider,
-                             const juce::String& help)
+                             juce::Label& valueLabel, int decimalPlaces,
+                             std::function<void(float)> setter, const juce::String& help)
     {
         button.setButtonText("RESET");
-        button.onClick = [&slider]
+        button.onClick = [this, &slider, &valueLabel, decimalPlaces, setter]
         {
-            slider.setValue(0.0, juce::sendNotificationSync);
+            resetBipolarControl(slider, valueLabel, decimalPlaces, setter);
         };
         addAndMakeVisible(button);
         registerHelp(button, help);
     };
 
-    setupReset(tuneResetButton, tuneSlider, HelpText::tuneReset());
-    setupReset(fineResetButton, fineSlider, HelpText::fineReset());
-    setupReset(osc2DetuneResetButton, osc2DetuneSlider, HelpText::osc2DetuneReset());
+    setupReset(tuneResetButton, tuneSlider, tuneValueLabel, 0,
+               [](float v) { SynthParameters::setTuneSemis(v); }, HelpText::tuneReset());
+    setupReset(fineResetButton, fineSlider, fineValueLabel, kCentDecimalPlaces,
+               [](float v) { SynthParameters::setFineCents(v); }, HelpText::fineReset());
+    setupReset(osc2DetuneResetButton, osc2DetuneSlider, osc2DetuneValueLabel, kCentDecimalPlaces,
+               [](float v) { SynthParameters::setOsc2DetuneCents(v); },
+               HelpText::osc2DetuneReset());
 
     for (auto* button : { &tuneResetButton, &fineResetButton, &osc2DetuneResetButton })
     {
         button->setComponentID("tuneReset");
         button->setColour(juce::TextButton::textColourOffId, SynthTheme::accentBright);
     }
+}
+
+void SynthEditor::resetBipolarControl(juce::Slider& slider, juce::Label& valueLabel,
+                                      int decimalPlaces, std::function<void(float)> setter)
+{
+    constexpr float resetValue = 0.0f;
+    setter(resetValue);
+    slider.setValue(resetValue, juce::dontSendNotification);
+    updateBipolarValueLabel(valueLabel, resetValue, decimalPlaces);
+    slider.repaint();
 }
 
 void SynthEditor::setupSubOctaveButtons()
@@ -506,7 +542,7 @@ void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::La
                             const juce::String& name, float minValue, float maxValue,
                             float defaultValue, bool logarithmic, int decimalPlaces,
                             const juce::String& helpText, std::function<void(float)> onChange,
-                            float step)
+                            float step, bool bipolar)
 {
     if (name.isNotEmpty())
     {
@@ -522,22 +558,31 @@ void SynthEditor::setupKnob(juce::Label& caption, juce::Slider& slider, juce::La
     slider.setRange(minValue, maxValue, logarithmic ? 0.0 : static_cast<double>(step));
     if (logarithmic)
         slider.setSkewFactorFromMidPoint(1000.0);
+    if (bipolar)
+        slider.setComponentID("bipolar");
     slider.setValue(defaultValue, juce::dontSendNotification);
-    slider.onValueChange = [&slider, &valueLabel, decimalPlaces, onChange]
+    slider.onValueChange = [&slider, &valueLabel, decimalPlaces, onChange, bipolar]
     {
         const auto value = static_cast<float>(slider.getValue());
         onChange(value);
-        valueLabel.setText(juce::String(value, decimalPlaces), juce::dontSendNotification);
+        if (bipolar)
+            updateBipolarValueLabel(valueLabel, value, decimalPlaces);
+        else
+            valueLabel.setText(juce::String(value, decimalPlaces), juce::dontSendNotification);
     };
     addAndMakeVisible(slider);
 
     valueLabel.setJustificationType(juce::Justification::centred);
     valueLabel.setFont(SynthTheme::monoFont(10.0f));
-    valueLabel.setColour(juce::Label::textColourId, SynthTheme::accentBright);
+    valueLabel.setColour(juce::Label::textColourId,
+                         bipolar ? SynthTheme::bipolarNeutral : SynthTheme::accentBright);
     addAndMakeVisible(valueLabel);
 
     onChange(defaultValue);
-    valueLabel.setText(juce::String(defaultValue, decimalPlaces), juce::dontSendNotification);
+    if (bipolar)
+        updateBipolarValueLabel(valueLabel, defaultValue, decimalPlaces);
+    else
+        valueLabel.setText(juce::String(defaultValue, decimalPlaces), juce::dontSendNotification);
     registerHelpGroup({ &caption, &slider, &valueLabel }, helpText);
 }
 
@@ -580,6 +625,13 @@ void SynthEditor::refreshSlider(juce::Slider& slider, juce::Label& valueLabel, f
     valueLabel.setText(juce::String(value, decimals), juce::dontSendNotification);
 }
 
+void SynthEditor::refreshBipolarSlider(juce::Slider& slider, juce::Label& valueLabel, float value,
+                                       int decimals)
+{
+    slider.setValue(value, juce::dontSendNotification);
+    updateBipolarValueLabel(valueLabel, value, decimals);
+}
+
 void SynthEditor::refreshToggle(juce::ToggleButton& button, bool state)
 {
     button.setToggleState(state, juce::dontSendNotification);
@@ -590,9 +642,11 @@ void SynthEditor::refreshUIFromParameters()
     selectOsc1Waveform(static_cast<int>(SynthParameters::getOsc1Waveform()));
     selectOsc2Waveform(static_cast<int>(SynthParameters::getOsc2Waveform()));
 
-    refreshSlider(tuneSlider, tuneValueLabel, SynthParameters::getTuneSemis(), 0);
-    refreshSlider(fineSlider, fineValueLabel, SynthParameters::getFineCents(), 0);
-    refreshSlider(osc2DetuneSlider, osc2DetuneValueLabel, SynthParameters::getOsc2DetuneCents(), 0);
+    refreshBipolarSlider(tuneSlider, tuneValueLabel, SynthParameters::getTuneSemis(), 0);
+    refreshBipolarSlider(fineSlider, fineValueLabel, SynthParameters::getFineCents(),
+                         kCentDecimalPlaces);
+    refreshBipolarSlider(osc2DetuneSlider, osc2DetuneValueLabel,
+                         SynthParameters::getOsc2DetuneCents(), kCentDecimalPlaces);
     refreshSlider(osc1LvlSlider, osc1LvlValueLabel, SynthParameters::getOsc1Level(), 2);
     refreshSlider(osc2LvlSlider, osc2LvlValueLabel, SynthParameters::getOsc2Level(), 2);
     refreshSlider(subLvlSlider, subLvlValueLabel, SynthParameters::getSubLevel(), 2);
@@ -766,6 +820,7 @@ void SynthEditor::layoutTuningColumn(juce::Rectangle<int> col, juce::Label& capt
     auto column = col.reduced(2, 0);
     caption.setBounds(column.removeFromTop(16));
     resetButton.setBounds(column.removeFromTop(26).reduced(2, 0));
+    resetButton.toFront(false);
 
     value.setBounds(column.removeFromBottom(18));
     slider.setBounds(column.reduced(4, 2));
