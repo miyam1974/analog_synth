@@ -1,3 +1,4 @@
+#include <array>
 #include <functional>
 #include <iterator>
 #include <memory>
@@ -213,7 +214,6 @@ public:
             synth.addVoice(new SynthVoice(i));
 
         synth.addSound(new SynthSound());
-        applyMonophonicMode();
         setAudioChannels(0, 2);
 
         titleLabel.setText("NEXUS OSC", juce::dontSendNotification);
@@ -244,6 +244,7 @@ public:
         keyboardComponent->setColour(juce::MidiKeyboardComponent::keyDownOverlayColourId,
                                      SynthTheme::accent.withAlpha(0.55f));
         addAndMakeVisible(*keyboardComponent);
+        setPcKeyboardMappingsEnabled(*keyboardComponent, true);
 
         pcKeyboardOnButton.setButtonText("ON");
         pcKeyboardOnButton.setComponentID("masterBarText");
@@ -281,7 +282,7 @@ public:
         addAndMakeVisible(editor);
         editor.onMidiSelectionChanged = [this](int id) { reconnectMidiInput(id); };
         editor.onPanic = [this] { stopAllSound(); };
-        editor.onMonoModeChanged = [this](bool) { applyMonophonicMode(); };
+        editor.onMonoModeChanged = [this](bool) { stopAllSound(); };
         editor.onPresetSelected = [this](int index) { presetManager.selectPreset(index); };
         editor.onPresetSave = [this] { promptOverwritePreset(); };
         editor.onPresetSaveAs = [this] { promptSavePresetAs(); };
@@ -357,6 +358,7 @@ public:
         synth.setCurrentPlaybackSampleRate(sampleRate);
         midiCollector.reset(sampleRate);
         keyboardState.reset();
+        noteVelocities.fill(0.0f);
     }
 
     void getNextAudioBlock(const juce::AudioSourceChannelInfo& bufferToFill) override
@@ -368,12 +370,12 @@ public:
         juce::MidiBuffer incomingMidi;
         midiCollector.removeNextBlockOfMessages(incomingMidi, bufferToFill.numSamples);
         keyboardState.processNextMidiBuffer(incomingMidi, 0, bufferToFill.numSamples, true);
+        trackNoteVelocities(incomingMidi);
         applyTransposeToMidiBuffer(incomingMidi, transposeControl.getSemitoneOffset());
         applyMonoModeMidi(incomingMidi);
         synth.renderNextBlock(*bufferToFill.buffer, incomingMidi, 0, bufferToFill.numSamples);
 
-        const auto master = SynthParameters::getMasterLevel();
-        bufferToFill.buffer->applyGain(0, bufferToFill.numSamples, master);
+        bufferToFill.buffer->applyGain(SynthParameters::getMasterLevel());
     }
 
     void releaseResources() override {}
@@ -399,8 +401,12 @@ public:
         auto bounds = getLocalBounds();
         auto header = bounds.removeFromTop(kHeaderHeight).reduced(kMargin, kHeaderVerticalPadding);
         auto titleRow = header.withSizeKeepingCentre(header.getWidth(), kHeaderTitleRowHeight);
+        juce::GlyphArrangement titleGlyphs;
+        titleGlyphs.addFittedText(titleLabel.getFont(), titleLabel.getText(), 0.0f, 0.0f, 10000.0f,
+                                  static_cast<float>(kHeaderTitleRowHeight), juce::Justification::left,
+                                  1);
         const auto titleWidth =
-            juce::roundToInt(titleLabel.getFont().getStringWidthFloat(titleLabel.getText())) + 8;
+            juce::roundToInt(titleGlyphs.getBoundingBox(0, -1, true).getWidth()) + 8;
         titleLabel.setBounds(titleRow.removeFromLeft(titleWidth));
         titleRow.removeFromLeft(kHeaderTitleSubtitleGap);
         subtitleLabel.setBounds(titleRow);
@@ -492,7 +498,24 @@ private:
         midiCollector.addMessageToQueue(message);
     }
 
-    void applyMonophonicMode() {}
+    void trackNoteVelocities(const juce::MidiBuffer& midi)
+    {
+        for (const auto metadata : midi)
+        {
+            const auto& message = metadata.getMessage();
+            if (!message.isNoteOnOrOff())
+                continue;
+
+            const auto note = message.getNoteNumber();
+            if (!juce::isPositiveAndBelow(note, static_cast<int>(noteVelocities.size())))
+                continue;
+
+            if (message.isNoteOn())
+                noteVelocities[static_cast<size_t>(note)] = message.getFloatVelocity();
+            else
+                noteVelocities[static_cast<size_t>(note)] = 0.0f;
+        }
+    }
 
     SynthVoice* findMonoSoundingVoice()
     {
@@ -577,7 +600,9 @@ private:
                         if (transposedHeld != voice->getCurrentMidiNote())
                         {
                             silenceOtherVoices(voice);
-                            voice->legatoNoteOn(transposedHeld, 1.0f);
+                            const auto heldVelocity = noteVelocities[static_cast<size_t>(heldNote)];
+                            voice->legatoNoteOn(transposedHeld,
+                                                heldVelocity > 0.0f ? heldVelocity : 1.0f);
                         }
                     }
 
@@ -604,8 +629,8 @@ private:
 
     void onPresetParametersChanged()
     {
+        stopAllSound();
         editor.refreshUIFromParameters();
-        applyMonophonicMode();
         refreshPresetList();
         updatePresetSaveButtonState();
     }
@@ -638,12 +663,12 @@ private:
             return;
         }
 
+        stopAllSound();
         diffPreToggleSnapshot = PresetManager::captureCurrentParameters();
         applyParametersKeepingMaster(diffBaseline);
         diffActive = true;
         editor.setDiffModeActive(true);
         editor.refreshUIFromParameters();
-        applyMonophonicMode();
         updatePresetSaveButtonState();
     }
 
@@ -652,12 +677,12 @@ private:
         if (!diffActive)
             return;
 
+        stopAllSound();
         applyParametersKeepingMaster(diffPreToggleSnapshot);
         diffPreToggleSnapshot = juce::var();
         diffActive = false;
         editor.setDiffModeActive(false);
         editor.refreshUIFromParameters();
-        applyMonophonicMode();
         updatePresetSaveButtonState();
     }
 
@@ -804,7 +829,6 @@ private:
 
         editor.refreshUIFromParameters();
         refreshPresetList();
-        applyMonophonicMode();
         updatePresetSaveButtonState();
     }
 
@@ -848,6 +872,7 @@ private:
     {
         synth.allNotesOff(0, false);
         keyboardState.allNotesOff(0);
+        noteVelocities.fill(0.0f);
 
         for (int i = 0; i < synth.getNumVoices(); ++i)
         {
@@ -867,6 +892,7 @@ private:
     }
 
     double currentSampleRate = 44100.0;
+    std::array<float, 128> noteVelocities {};
     juce::Synthesiser synth;
     juce::MidiMessageCollector midiCollector;
     juce::MidiKeyboardState keyboardState;

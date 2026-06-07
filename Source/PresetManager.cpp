@@ -379,40 +379,65 @@ void PresetManager::applyParametersFromVar(const juce::var& root)
     else
         SynthParameters::setOsc2Enabled(true);
 
-    auto setFloat = [&](const char* key, auto setter)
+    auto setFloat = [&](const char* key, auto setter, float minValue, float maxValue)
     {
         const auto v = get(key);
         if (v.isDouble() || v.isInt() || v.isInt64())
-            setter(static_cast<float>(v));
+            setter(juce::jlimit(minValue, maxValue, static_cast<float>(v)));
     };
 
-    setFloat("osc1Level", SynthParameters::setOsc1Level);
-    setFloat("osc2Level", SynthParameters::setOsc2Level);
-    setFloat("subLevel", SynthParameters::setSubLevel);
-    setFloat("tuneSemis", SynthParameters::setTuneSemis);
-    setFloat("fineCents", SynthParameters::setFineCents);
-    setFloat("noiseLevel", SynthParameters::setNoiseLevel);
-    setFloat("cutoffHz", SynthParameters::setCutoffHz);
-    setFloat("resonance", SynthParameters::setResonance);
-    setFloat("filterEnvAmount", SynthParameters::setFilterEnvAmount);
-    setFloat("filterKeyTrack", SynthParameters::setFilterKeyTrack);
-    setFloat("osc2DetuneCents", SynthParameters::setOsc2DetuneCents);
-    setFloat("ampAttack", SynthParameters::setAmpAttack);
-    setFloat("ampDecay", SynthParameters::setAmpDecay);
-    setFloat("ampSustain", SynthParameters::setAmpSustain);
-    setFloat("ampRelease", SynthParameters::setAmpRelease);
-    setFloat("filterAttack", SynthParameters::setFilterAttack);
-    setFloat("filterDecay", SynthParameters::setFilterDecay);
-    setFloat("filterSustain", SynthParameters::setFilterSustain);
-    setFloat("filterRelease", SynthParameters::setFilterRelease);
-    setFloat("lfoRateHz", SynthParameters::setLfoRateHz);
-    setFloat("lfoDepth", SynthParameters::setLfoDepth);
-    setFloat("lfo2RateHz", SynthParameters::setLfo2RateHz);
-    setFloat("lfo2Depth", SynthParameters::setLfo2Depth);
-    setFloat("glideSec", SynthParameters::setGlideSec);
-    setFloat("velocityToAmp", SynthParameters::setVelocityToAmp);
-    setFloat("velocityToFilter", SynthParameters::setVelocityToFilter);
-    setFloat("masterLevel", SynthParameters::setMasterLevel);
+    setFloat("osc1Level", SynthParameters::setOsc1Level, SynthParameters::minOscLevel,
+             SynthParameters::maxOscLevel);
+    setFloat("osc2Level", SynthParameters::setOsc2Level, SynthParameters::minOscLevel,
+             SynthParameters::maxOscLevel);
+    setFloat("subLevel", SynthParameters::setSubLevel, SynthParameters::minSubLevel,
+             SynthParameters::maxSubLevel);
+    setFloat("tuneSemis", SynthParameters::setTuneSemis, SynthParameters::minTuneSemis,
+             SynthParameters::maxTuneSemis);
+    setFloat("fineCents", SynthParameters::setFineCents, SynthParameters::minFineCents,
+             SynthParameters::maxFineCents);
+    setFloat("noiseLevel", SynthParameters::setNoiseLevel, SynthParameters::minNoiseLevel,
+             SynthParameters::maxNoiseLevel);
+    setFloat("cutoffHz", SynthParameters::setCutoffHz, SynthParameters::minCutoffHz,
+             SynthParameters::maxCutoffHz);
+    setFloat("resonance", SynthParameters::setResonance, SynthParameters::minResonance,
+             SynthParameters::maxResonance);
+    setFloat("filterEnvAmount", SynthParameters::setFilterEnvAmount,
+             SynthParameters::minFilterEnvAmount, SynthParameters::maxFilterEnvAmount);
+    setFloat("filterKeyTrack", SynthParameters::setFilterKeyTrack,
+             SynthParameters::minFilterKeyTrack, SynthParameters::maxFilterKeyTrack);
+    setFloat("osc2DetuneCents", SynthParameters::setOsc2DetuneCents,
+             SynthParameters::minOsc2DetuneCents, SynthParameters::maxOsc2DetuneCents);
+    setFloat("ampAttack", SynthParameters::setAmpAttack, SynthParameters::minEnvTime,
+             SynthParameters::maxEnvTime);
+    setFloat("ampDecay", SynthParameters::setAmpDecay, SynthParameters::minEnvTime,
+             SynthParameters::maxEnvTime);
+    setFloat("ampSustain", SynthParameters::setAmpSustain, 0.0f, 1.0f);
+    setFloat("ampRelease", SynthParameters::setAmpRelease, SynthParameters::minEnvTime,
+             SynthParameters::maxEnvTime);
+    setFloat("filterAttack", SynthParameters::setFilterAttack, SynthParameters::minEnvTime,
+             SynthParameters::maxEnvTime);
+    setFloat("filterDecay", SynthParameters::setFilterDecay, SynthParameters::minEnvTime,
+             SynthParameters::maxEnvTime);
+    setFloat("filterSustain", SynthParameters::setFilterSustain, 0.0f, 1.0f);
+    setFloat("filterRelease", SynthParameters::setFilterRelease, SynthParameters::minEnvTime,
+             SynthParameters::maxEnvTime);
+    setFloat("lfoRateHz", SynthParameters::setLfoRateHz, SynthParameters::minLfoRateHz,
+             SynthParameters::maxLfoRateHz);
+    setFloat("lfoDepth", SynthParameters::setLfoDepth, SynthParameters::minLfoDepth,
+             SynthParameters::maxLfoDepth);
+    setFloat("lfo2RateHz", SynthParameters::setLfo2RateHz, SynthParameters::minLfoRateHz,
+             SynthParameters::maxLfoRateHz);
+    setFloat("lfo2Depth", SynthParameters::setLfo2Depth, SynthParameters::minLfoDepth,
+             SynthParameters::maxLfoDepth);
+    setFloat("glideSec", SynthParameters::setGlideSec, SynthParameters::minGlideSec,
+             SynthParameters::maxGlideSec);
+    setFloat("velocityToAmp", SynthParameters::setVelocityToAmp, SynthParameters::minVelocityDepth,
+             SynthParameters::maxVelocityDepth);
+    setFloat("velocityToFilter", SynthParameters::setVelocityToFilter,
+             SynthParameters::minVelocityDepth, SynthParameters::maxVelocityDepth);
+    setFloat("masterLevel", SynthParameters::setMasterLevel, SynthParameters::minMasterLevel,
+             SynthParameters::maxMasterLevel);
 
     const auto subOct = get("subOctave");
     if (subOct.isInt() || subOct.isInt64())
