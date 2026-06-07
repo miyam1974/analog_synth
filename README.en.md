@@ -14,9 +14,9 @@ Analog-style synthesizer for Windows (Standalone). Play via USB MIDI keyboard or
 
 Window size: 1080×680
 
-Top: presets, MONO, ALL OFF, MASTER
+Top: presets, MONO, ALL OFF, SAVE / SAVE AS, LOAD, RESET, DIFF, MASTER
 
-Center: synth modules
+Center: synth modules (compact header + five panels)
 
 Bottom: on-screen keyboard and MIDI settings
 
@@ -36,14 +36,17 @@ Playhead dots on the FILTER and AMPLIFIER EG graphs
 
 | Category | Description |
 | -------- | ----------- |
-| Oscillators | OSC1 / OSC2 (4 waveforms), Sub (-1 / -2 oct), TUNE / FINE / DET2 |
-| Mixer | OSC1 / OSC2 / SUB / NOISE levels, Glide, V-A / V-F |
+| Oscillators | OSC1 / OSC2 (4 waveforms; click OSC2 again to turn off), Sub (-1 / -2 oct), TUNE / FINE / DET2 |
+| Mixer | OSC1 / OSC2 / SUB / NOISE levels, Glide, V-A / V-F (OSC2 / DET2 disabled when OSC2 is off) |
 | Filter | Low-pass (CUT / RES / ENV / KEY), Filter EG graph |
 | Amp | Amp ADSR graph |
 | LFO | LFO1 / LFO2 (RATE / DEPTH, Pitch / Filter / Amp, RATE-synced LEDs) |
 | Performance | 16 voices, MONO, ALL OFF (panic / all notes off) |
-| Presets | 4 built-in presets (INIT / PAD / BASS / LEAD), JSON SAVE / LOAD |
-| Help | Japanese tooltips on hover (SYSTEM footer) |
+| Presets | 4 built-in + user presets. SAVE (overwrite), SAVE AS, LOAD, RESET |
+| Compare | **DIFF** — A/B against tone at launch or last RESET / LOAD (`D` key toggles) |
+| Session | On quit, saves tone, preset, MIDI, and window bounds under `%APPDATA%` |
+| Help | Japanese tooltips on hover (SYSTEM footer, 14pt) |
+| Icon | Windows exe: **Nex** on yellow-green (`Resources/Icons/`) |
 
 **Not implemented (planned)**: VST3 / CLAP, FX (chorus / delay / reverb), pitch bend / mod wheel,
 ASIO enablement, SmoothedValue / effective cutoff Hz display, arpeggiator / MPE / voice-count UI,
@@ -164,8 +167,10 @@ After you push a new tag and Actions succeeds, a fresh EXE appears there.
 3. Under **SYSTEM**, choose **MIDI IN** (`All Inputs` merges all devices)
 4. Tweak modules, then play from the on-screen keyboard or MIDI
 5. Hover controls to see Japanese help in the SYSTEM footer
-6. Press **RESET** to restore factory defaults (INIT preset)
-7. On quit, synth settings, preset, MIDI input, and window layout are restored on next launch
+6. **RESET** restores factory defaults (INIT). RESET / LOAD also refresh the **DIFF** comparison baseline
+7. After editing, use **DIFF** to switch against the baseline tone (while active, only ALL OFF / MASTER / MIDI IN / DIFF work)
+8. **SAVE AS** creates a user preset; **SAVE** overwrites the loaded user preset (enabled only after edits)
+9. On quit, synth settings, preset selection, MIDI input, and window layout are restored on next launch
 
 ### User preset location
 
@@ -192,12 +197,18 @@ analog_synth/
 ├── ARCHITECTURE.en.md
 ├── SPEC.md
 ├── LICENSE
+├── Resources/
+│   └── Icons/
+│       ├── app_icon.png          # Windows icon source (Nex)
+│       ├── AppPrimaryIcon.rc     # exe icon (resource ID 1)
+│       └── generate_app_icon.py
 ├── docs/
 │   └── images/
 │       ├── nexus-osc-ui.png  # main UI (README)
 │       └── playing.png       # playing (README)
 └── Source/
     ├── Main.cpp
+    ├── AppState.*
     ├── SynthEditor.*
     ├── SynthVoice.*
     ├── SynthSound.*
@@ -213,6 +224,7 @@ analog_synth/
         ├── LfoRateLed.*
         ├── ModulePanel.*
         ├── WaveformButton.*
+        ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
         └── SynthTheme.h
 ```

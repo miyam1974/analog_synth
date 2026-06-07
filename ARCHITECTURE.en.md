@@ -41,8 +41,9 @@ The app runs on two paths: **UI thread** and **audio thread**. Parameters are sh
 │  UI Layer     │   │  State Layer  │   │  Audio Layer  │
 │  SynthEditor  │   │ SynthParameters│  │  Synthesiser  │
 │  UI/*         │   │ PresetManager │   │  SynthVoice   │
-│  HelpStrings  │   │ EnvelopePlay- │   │  GlobalLfo    │
-│               │   │  headHub      │   │  AdsrEnvelope │
+│  HelpStrings  │   │ AppState      │   │  GlobalLfo    │
+│               │   │ EnvelopePlay- │   │  AdsrEnvelope │
+│               │   │  headHub      │   │               │
 └───────────────┘   └───────────────┘   └───────────────┘
 ```
 
@@ -50,7 +51,7 @@ The app runs on two paths: **UI thread** and **audio thread**. Parameters are sh
 | ----- | -------------- |
 | **Application** | Window, audio/MIDI device wiring, lifecycle |
 | **UI** | Controls, user input → parameter writes |
-| **State** | Parameters, presets, playhead data for UI |
+| **State** | Parameters, presets, session JSON, playhead data for UI |
 | **Audio** | Sample generation, envelopes, filter, LFO |
 
 ---
@@ -264,7 +265,7 @@ Master gain is applied after all voices in `MainComponent::getNextAudioBlock`.
 | Source | Content |
 | ------ | ------- |
 | OSC1 | `Waveform` (Sine / Saw / Square / Triangle) |
-| OSC2 | Independent waveform + DET2 (±100 cent) |
+| OSC2 | Independent waveform + DET2 (±100 cent). Omitted from mix when `osc2Enabled` is false |
 | Sub | OSC1 waveform at -1 / -2 octave |
 | Noise | White noise |
 
@@ -304,7 +305,7 @@ Other defaults (excerpt): Cutoff **6000 Hz**, Resonance **0.707**, OSC1 **Saw**,
 
 | Category | Main parameters |
 | -------- | ----------------- |
-| OSC | Waveforms ×2, levels, TUNE/FINE, DET2 |
+| OSC | Waveforms ×2, `osc2Enabled`, levels, TUNE/FINE, DET2 |
 | MIXER | Sub / Noise, Glide, V→A / V→F |
 | FILTER | Cutoff, Resonance, ENV amount, Key Track, Filter EG |
 | AMP | Amp EG (A/D/S/R) |
@@ -352,8 +353,8 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 
 ## UI architecture (`SynthEditor` + `Source/UI/`)
 
-`MainComponent` = header (title) + `SynthEditor` + on-screen keyboard
-(`MidiKeyboardComponent`, MIDI 36–96). Initial window **1080×680** (`MainWindow::centreWithSize`).
+`MainComponent` = compact header (title + subtitle, **28px** tall) + `SynthEditor` + on-screen keyboard
+(`MidiKeyboardComponent`, MIDI 36–96). Initial window **1080×680**; restores bounds from last session when available.
 
 ### Master row (top of `SynthEditor`)
 
@@ -361,15 +362,18 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 | ------- | -------- |
 | **ALL OFF** | Immediate silence (`onPanic` → `stopAllSound`) |
 | **MONO** | Monophonic note stealing |
-| **PRESET** / **SAVE** / **LOAD** | Preset select / save / load |
-| **MASTER** | Output level |
+| **PRESET** | Preset select (built-in + user) |
+| **SAVE** / **SAVE AS** | Overwrite loaded user preset / save as new (enabled after edits) |
+| **LOAD** / **RESET** | Load JSON file / factory reset (INIT) |
+| **DIFF** | A/B compare against baseline tone (`D` key toggles) |
+| **MASTER** | Output level (**%** display, 0–1 internally) |
 
 ### Module panels
 
 | Panel | Content |
 | ----- | ------- |
-| OSC | OSC1/OSC2 four waveforms each, TUNE/FINE/DET2 (with RESET) |
-| MIXER | OSC1/OSC2/SUB/NOISE levels, Sub octave, Glide, V-A/V-F |
+| OSC | OSC1/OSC2 four waveforms each (OSC2 toggles off on re-click), TUNE/FINE/DET2 (with RESET) |
+| MIXER | OSC1/OSC2/SUB/NOISE levels, Sub octave (`SubOctGroupFrame`), Glide, V-A/V-F |
 | FILTER | CUT/RES/ENV/KEY, Filter EG graph + FA–FR |
 | AMP | Amp EG graph + A/D/S/R |
 | LFO | LFO1/LFO2 (RATE/DEPTH, PITCH/FILTER/AMP routing, RATE LED) |
@@ -388,20 +392,35 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 | `ModulePanel` | Module frame + `contentBounds()` |
 | `FuturisticLookAndFeel` | Knob/slider look |
 | `SynthTheme` | Colors, fonts, decoration helpers |
-| `WaveformButton` | OSC waveform select |
+| `WaveformButton` | OSC waveform select (disables DET2 / OSC2 level when OSC2 off) |
+| `SubOctGroupFrame` | Corner-bracket frame for SUB octave buttons |
 | `AdsrDisplay` | ADSR curve + playheads |
 | `LfoRateLed` | LFO phase LED (`GlobalLfo::Index` for LFO1/LFO2) |
 
 ### Help
 
 - `HelpStrings.h` — Japanese help (UTF-8 literals + `juce::String::fromUTF8`)
-- Hover shows text in footer status line
+- Hover shows text in footer status line (**14pt**, multi-line capable)
+
+### DIFF compare mode
+
+- Baseline captured at launch, **RESET**, and **LOAD** via `PresetManager::captureCurrentParameters()`
+- **DIFF ON**: applies baseline (keeps MASTER). `SynthEditor::setParametersLocked(true)` locks UI
+  - Still usable: ALL OFF / MASTER / MIDI IN / DIFF (+ on-screen keyboard / external MIDI)
+- **DIFF OFF**: restores pre-toggle snapshot
+- **`D`** key toggles (`MainComponent::handleDiffKeyPress`)
+
+### OSC2 toggle
+
+- Re-click selected OSC2 waveform → `SynthParameters::osc2Enabled = false`
+- Click another waveform → set waveform + `osc2Enabled = true`
+- When off: OSC2 omitted in `SynthVoice::mixOscillators`; **DET2** and MIXER **OSC2** disabled in UI
 
 ### Callbacks
 
-`SynthEditor` reports to `MainComponent` via `std::function` (MIDI select, panic, mono, presets).
+`SynthEditor` reports to `MainComponent` via `std::function` (MIDI select, panic, mono, presets, DIFF, edit notifications).
 
-Panel widths (`SynthEditor::resized`): **OSC 21% / MIXER 16% / FILTER 26% / AMP 18%**,
+Panel widths (`SynthEditor::resized`): **OSC 21% / MIXER 17% / FILTER 23% / AMP 19%**,
 remainder LFO (`layoutLfo` splits LFO1 / LFO2).
 MIXER/LFO labels use one full-width line; RATE LEDs sit below the RATE label.
 
@@ -411,10 +430,24 @@ MIXER/LFO labels use one full-width line; RATE LEDs sit below the RATE label.
 
 - **Built-in (Factory)**: INIT / PAD / BASS / LEAD defined in code
 - **User**: `%APPDATA%/NEXUS OSC/Presets/*.json` (`PresetManager::getUserPresetsDirectory`)
-- JSON: LFO1 uses `lfoRateHz`, etc.; LFO2 uses `lfo2RateHz` / `lfo2Depth` / `lfo2To*`
-  (older presets may be LFO1-only)
+- JSON: LFO1 uses `lfoRateHz`, etc.; LFO2 uses `lfo2RateHz` / `lfo2Depth` / `lfo2To*`;
+  OSC2 includes `osc2Enabled` (missing key defaults to true)
 - `captureCurrentParameters` / `applyParametersFromVar` ↔ `SynthParameters`
-- Preset change → `onParametersChanged` → `SynthEditor::refreshUIFromParameters`
+- **Dirty detection**: compares `baselineJson` to current state (`isCurrentPresetDirty`)
+  - Edited factory preset: **SAVE AS** only
+  - Edited user preset: **SAVE** (overwrite) and **SAVE AS**
+- After preset change / SAVE / LOAD / RESET → `markPresetBaselineFromCurrent` → UI refresh
+
+---
+
+## Session persistence (`AppState`)
+
+| Item | Details |
+| ---- | ------- |
+| File | `%APPDATA%/NEXUS OSC/session.json` |
+| Save | On quit (`MainWindow::persistSession` → `AppState::save`) |
+| Contents | Full parameter JSON, preset index, MIDI IN (All Inputs / device ID), window bounds |
+| Restore | `AppState::load` → `MainComponent::restoreSession` on launch |
 
 ---
 
@@ -422,34 +455,41 @@ MIXER/LFO labels use one full-width line; RATE LEDs sit below the RATE label.
 
 ```text
 analog_synth/
-├── CMakeLists.txt          # build
-├── README.md               # getting started (Japanese)
-├── README.en.md            # getting started (English)
-├── ARCHITECTURE.md         # this doc (Japanese)
-├── ARCHITECTURE.en.md      # this doc (English)
-├── SPEC.md                 # UI feature spec
-├── LICENSE                 # MIT
+├── CMakeLists.txt          # build (includes Windows icon generation)
+├── README.md
+├── README.en.md
+├── ARCHITECTURE.md
+├── ARCHITECTURE.en.md
+├── SPEC.md
+├── LICENSE
+├── Resources/
+│   └── Icons/
+│       ├── app_icon.png        # icon source (Nex on yellow-green)
+│       ├── AppPrimaryIcon.rc   # exe resource ID 1
+│       └── generate_app_icon.py
 ├── docs/
 │   └── images/
-│       ├── nexus-osc-ui.png  # main UI (README)
-│       └── playing.png       # playing (README)
+│       ├── nexus-osc-ui.png
+│       └── playing.png
 └── Source/
-    ├── Main.cpp            # app / audio / MIDI hub
-    ├── SynthEditor.*       # main UI
-    ├── SynthVoice.*        # per-voice DSP
-    ├── SynthSound.*        # Synthesiser sound gate
-    ├── SynthParameters.h   # global parameters (atomic)
-    ├── AdsrEnvelope.h      # ADSR envelope
-    ├── GlobalLfo.h         # global LFO
-    ├── EnvelopePlayhead.*  # EG graph playheads
-    ├── PresetManager.*     # presets
-    ├── Waveform.h          # waveform enum + samples
-    ├── HelpStrings.h       # Japanese help
+    ├── Main.cpp            # app / audio / MIDI / DIFF
+    ├── AppState.*          # session JSON
+    ├── SynthEditor.*
+    ├── SynthVoice.*
+    ├── SynthSound.*
+    ├── SynthParameters.h
+    ├── AdsrEnvelope.h
+    ├── GlobalLfo.h
+    ├── EnvelopePlayhead.*
+    ├── PresetManager.*
+    ├── Waveform.h
+    ├── HelpStrings.h
     └── UI/
         ├── AdsrDisplay.*
         ├── LfoRateLed.*
         ├── ModulePanel.*
         ├── WaveformButton.*
+        ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
         └── SynthTheme.h
 ```
@@ -474,12 +514,25 @@ The UI does not touch audio objects directly; only atomic parameter writes.
 ```cmake
 FetchContent → JUCE 8.0.6
 juce_add_gui_app(AnalogSynth)
-target_sources → Main, SynthEditor, PresetManager, SynthVoice,
-                 EnvelopePlayhead, SynthSound, UI/* (6 files)
+# Windows: app_icon.png → icon.ico (at build time) + AppPrimaryIcon.rc (resource ID 1)
+target_sources → Main, AppState, SynthEditor, PresetManager, SynthVoice,
+                 EnvelopePlayhead, SynthSound, UI/* (6 files + AppPrimaryIcon.rc)
 target_link_libraries → juce_audio_utils, juce_dsp
 ```
 
 MSVC: `/utf-8` for UTF-8 source.
+
+### Windows application icon
+
+Explorer uses **resource ID 1** for the `.exe` file icon. JUCE’s default `IDI_ICON1` string
+name alone may not show in Explorer, so we embed `AppPrimaryIcon.rc` explicitly.
+
+| File | Role |
+| ---- | ---- |
+| `Resources/Icons/app_icon.png` | 512×512 source (yellow-green `#adff2f` + black **Nex**) |
+| `Resources/Icons/generate_app_icon.py` | Regenerate PNG |
+| `Resources/Icons/AppPrimaryIcon.rc` | `1 ICON DISCARDABLE "icon.ico"` |
+| Build output `icon.ico` | Generated by `juceaide winicon` from PNG (16/32/48/256 px) |
 
 ---
 
@@ -511,5 +564,9 @@ replace `SynthParameters` with `APVTS` or an equivalent parameter bus.
 | UI layout | `SynthEditor.cpp` (`layout*`) |
 | Theme / look | `UI/SynthTheme.h`, `FuturisticLookAndFeel.*` |
 | EG graphs | `UI/AdsrDisplay.*`, `EnvelopePlayhead.*` |
-| Preset format | `PresetManager.cpp` |
-| MIDI / audio I/O | `Main.cpp` (MIDI), `AudioAppComponent` / `AudioDeviceManager` (output) |
+| Preset format / dirty state | `PresetManager.cpp` |
+| Session JSON | `AppState.cpp` |
+| DIFF / baseline | `Main.cpp` |
+| OSC2 toggle | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp` |
+| MIDI / audio I/O | `Main.cpp`, `AudioAppComponent` / `AudioDeviceManager` |
+| Windows icon | `CMakeLists.txt`, `Resources/Icons/*` |

@@ -14,9 +14,9 @@ Windows 向けのアナログ系シンセサイザー（Standalone）。USB MIDI
 
 画面サイズ: 1080×680
 
-上部: プリセット・MONO・ALL OFF・MASTER
+上部: プリセット・MONO・ALL OFF・SAVE / SAVE AS・LOAD・RESET・DIFF・MASTER
 
-中央: シンセモジュール
+中央: シンセモジュール（コンパクトヘッダー + 5 パネル）
 
 下部: 仮想キーボードと MIDI 設定
 
@@ -36,14 +36,17 @@ FILTER / AMPLIFIER の EG グラフ上の再生位置に点を表示
 
 | カテゴリ | 内容 |
 | -------- | ---- |
-| オシレータ | OSC1 / OSC2（4 波形）、Sub（-1 / -2 oct）、TUNE / FINE / DET2 |
-| ミキサー | OSC1 / OSC2 / SUB / NOISE レベル、Glide、V-A / V-F |
+| オシレータ | OSC1 / OSC2（4 波形。OSC2 は同波形再クリックで OFF）、Sub（-1 / -2 oct）、TUNE / FINE / DET2 |
+| ミキサー | OSC1 / OSC2 / SUB / NOISE レベル、Glide、V-A / V-F（OSC2 OFF 時は OSC2 / DET2 非活性） |
 | フィルタ | ローパス（CUT / RES / ENV / KEY）、Filter EG グラフ |
 | アンプ | Amp ADSR グラフ |
 | LFO | LFO1 / LFO2（RATE / DEPTH、Pitch / Filter / Amp、RATE 連動 LED） |
 | 演奏 | 16 ボイス、MONO、ALL OFF（全音停止） |
-| プリセット | 内蔵プリセット 4 種類（INIT / PAD / BASS / LEAD）、JSON で SAVE / LOAD |
-| ヘルプ | ホバー時に日本語でヘルプ表示（SYSTEM フッター） |
+| プリセット | 内蔵 4 種類 + ユーザープリセット。SAVE（上書き）/ SAVE AS / LOAD / RESET |
+| 比較 | **DIFF** — 起動時または最後の RESET / LOAD 時の音色と A/B 比較（`D` キーでも切替） |
+| セッション | 終了時に音色・プリセット・MIDI・ウィンドウ位置を `%APPDATA%` に保存 |
+| ヘルプ | ホバー時に日本語でヘルプ表示（SYSTEM フッター、14pt） |
+| アイコン | Windows exe: 黄緑背景に黒字 **Nex**（`Resources/Icons/`） |
 
 **未実装（予定）**: VST3 / CLAP、FX（コーラス / ディレイ / リバーブ）、ピッチベンド・Mod ホイール、ASIO 有効化、
 SmoothedValue・実効 Cutoff Hz 表示、アルペジエータ・MPE・ポリフォニー表示、オーディオデバイス設定 UI。
@@ -161,8 +164,10 @@ MSVC では `/utf-8` を有効にしており、日本語ヘルプ（`HelpString
 3. **SYSTEM** の **MIDI IN** で入力を選択（`All Inputs` で全デバイス）
 4. 各モジュールで音色を調整し、下部の仮想キーボードまたは MIDI で演奏する
 5. コントロールにマウスを合わせると、SYSTEM 領域に日本語の説明が表示される
-6. 音色を工場出荷状態に戻すときは **RESET**（INIT プリセット相当）
-7. アプリを終了すると、音色・プリセット・MIDI 選択・ウィンドウ位置が次回起動時に復元される
+6. **RESET** で工場出荷状態（INIT 相当）に戻す。RESET / LOAD 後は **DIFF** の比較基準も更新される
+7. 音色を編集したあと **DIFF** で基準音色と切り替えて比較できる（比較中は ALL OFF / MASTER / MIDI IN / DIFF のみ操作可）
+8. ユーザープリセットは **SAVE AS** で新規保存。**SAVE** は読み込み済みユーザープリセットの上書き（編集時のみ有効）
+9. アプリを終了すると、音色・プリセット選択・MIDI 選択・ウィンドウ位置が次回起動時に復元される
 
 ### ユーザープリセット保存先
 
@@ -189,12 +194,18 @@ analog_synth/
 ├── ARCHITECTURE.en.md
 ├── SPEC.md
 ├── LICENSE
+├── Resources/
+│   └── Icons/
+│       ├── app_icon.png          # Windows アイコン元画像（Nex）
+│       ├── AppPrimaryIcon.rc     # exe アイコン（リソース ID 1）
+│       └── generate_app_icon.py
 ├── docs/
 │   └── images/
 │       ├── nexus-osc-ui.png  # メイン画面（README）
 │       └── playing.png       # 演奏時（README）
 └── Source/
     ├── Main.cpp
+    ├── AppState.*
     ├── SynthEditor.*
     ├── SynthVoice.*
     ├── SynthSound.*
@@ -210,6 +221,7 @@ analog_synth/
         ├── LfoRateLed.*
         ├── ModulePanel.*
         ├── WaveformButton.*
+        ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
         └── SynthTheme.h
 ```
