@@ -365,7 +365,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 | **PRESET** | Preset select (built-in + user) |
 | **SAVE** / **SAVE AS** | Overwrite loaded user preset / save as new (enabled after edits) |
 | **LOAD** / **RESET** | Load JSON file / factory reset (INIT) |
-| **DIFF** | A/B compare against baseline tone (`D` key toggles) |
+| **DIFF** | A/B compare against baseline tone (Space key toggles) |
 | **MASTER** | Output level (**%** display, 0–1 internally) |
 
 ### Module panels
@@ -408,7 +408,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 - **DIFF ON**: applies baseline (keeps MASTER). `SynthEditor::setParametersLocked(true)` locks UI
   - Still usable: ALL OFF / MASTER / MIDI IN / DIFF (+ on-screen keyboard / external MIDI)
 - **DIFF OFF**: restores pre-toggle snapshot
-- **`D`** key toggles (`MainComponent::handleDiffKeyPress`)
+- **Space** key toggles (`MainComponent::handleDiffKeyPress`)
 
 ### OSC2 toggle
 

@@ -43,7 +43,7 @@ Playhead dots on the FILTER and AMPLIFIER EG graphs
 | LFO | LFO1 / LFO2 (RATE / DEPTH, Pitch / Filter / Amp, RATE-synced LEDs) |
 | Performance | 16 voices, MONO, ALL OFF (panic / all notes off) |
 | Presets | 4 built-in + user presets. SAVE (overwrite), SAVE AS, LOAD, RESET |
-| Compare | **DIFF** — A/B against tone at launch or last RESET / LOAD (`D` key toggles) |
+| Compare | **DIFF** — A/B against tone at launch or last RESET / LOAD (Space key toggles) |
 | Session | On quit, saves tone, preset, MIDI, and window bounds under `%APPDATA%` |
 | Help | Japanese tooltips on hover (SYSTEM footer, 14pt) |
 | Icon | Windows exe: **Nex** on yellow-green (`Resources/Icons/`) |

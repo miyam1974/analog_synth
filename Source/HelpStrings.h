@@ -265,7 +265,7 @@ inline juce::String presetReset()
 inline juce::String diffCompare()
 {
     return utf8(u8"起動時または RESET / LOAD 時の音色と比較します。\n"
-                  u8"押下中は ALL OFF・MASTER・MIDI IN のみ操作可。D キーで切替。");
+                  u8"押下中は ALL OFF・MASTER・MIDI IN のみ操作可。Space キーで切替。");
 }
 
 inline juce::String virtualKeyboard()

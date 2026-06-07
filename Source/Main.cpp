@@ -1,3 +1,4 @@
+#include <functional>
 #include <memory>
 #include <vector>
 
@@ -56,13 +57,54 @@ void applyParametersKeepingMaster(const juce::var& parameters)
     PresetManager::applyParametersFromVar(parameters);
     SynthParameters::setMasterLevel(masterLevel);
 }
+
+class DiffShortcutKeyListener : public juce::KeyListener
+{
+public:
+    explicit DiffShortcutKeyListener(std::function<void()> onToggle)
+        : onToggle(std::move(onToggle))
+    {
+    }
+
+    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    {
+        if (!isDiffShortcut(key))
+            return false;
+
+        onToggle();
+        return true;
+    }
+
+private:
+    static bool isDiffShortcut(const juce::KeyPress& key)
+    {
+        if (juce::Component::getCurrentlyModalComponent() != nullptr)
+            return false;
+
+        if (key.getModifiers().isAnyModifierKeyDown())
+            return false;
+
+        return key.isKeyCode(juce::KeyPress::spaceKey) || key.getTextCharacter() == ' ';
+    }
+
+    std::function<void()> onToggle;
+};
 } // namespace
 
 class MainComponent : public juce::AudioAppComponent,
-                      private juce::MidiInputCallback,
-                      private juce::KeyListener
+                      private juce::MidiInputCallback
 {
 public:
+    bool handleDiffShortcutKey(const juce::KeyPress& key)
+    {
+        if (diffShortcutListener == nullptr)
+            return false;
+
+        return diffShortcutListener->keyPressed(key, this);
+    }
+
+    juce::KeyListener* getDiffShortcutListener() const { return diffShortcutListener.get(); }
+
     explicit MainComponent(const AppState::Session& session)
         : presetManager([this] { onPresetParametersChanged(); })
     {
@@ -119,15 +161,23 @@ public:
         updatePresetSaveButtonState();
         captureDiffBaseline();
 
+        diffShortcutListener = std::make_unique<DiffShortcutKeyListener>([this]
+                                                                         { handleDiffToggle(!diffActive); });
+        addKeyListener(diffShortcutListener.get());
+        keyboardComponent->addKeyListener(diffShortcutListener.get());
+        editor.addKeyListener(diffShortcutListener.get());
+
         setWantsKeyboardFocus(true);
-        addKeyListener(this);
 
         setSize(1080, 680);
     }
 
     ~MainComponent() override
     {
-        removeKeyListener(this);
+        editor.removeKeyListener(diffShortcutListener.get());
+        if (keyboardComponent != nullptr)
+            keyboardComponent->removeKeyListener(diffShortcutListener.get());
+        removeKeyListener(diffShortcutListener.get());
         shutdownAudio();
         closeMidiInputs();
         setLookAndFeel(nullptr);
@@ -225,30 +275,13 @@ public:
 
     bool keyPressed(const juce::KeyPress& key) override
     {
-        if (handleDiffKeyPress(key))
+        if (handleDiffShortcutKey(key))
             return true;
 
         return juce::AudioAppComponent::keyPressed(key);
     }
 
 private:
-    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
-    {
-        return handleDiffKeyPress(key);
-    }
-
-    bool handleDiffKeyPress(const juce::KeyPress& key)
-    {
-        if (juce::Component::getCurrentlyModalComponent() != nullptr)
-            return false;
-
-        if (key.getKeyCode() != 'D' || key.getModifiers().isAnyModifierKeyDown())
-            return false;
-
-        handleDiffToggle(!diffActive);
-        return true;
-    }
-
     void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message) override
     {
         midiCollector.addMessageToQueue(message);
@@ -643,6 +676,7 @@ private:
     juce::var diffBaseline;
     juce::var diffPreToggleSnapshot;
     bool diffActive = false;
+    std::unique_ptr<DiffShortcutKeyListener> diffShortcutListener;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
@@ -681,11 +715,29 @@ private:
             setVisible(true);
             lockMinimumSizeToCurrentBounds();
 
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                addKeyListener(content->getDiffShortcutListener());
+
             // Frame size may not be final until after the native peer finishes layout.
             juce::MessageManager::callAsync([this] { lockMinimumSizeToCurrentBounds(); });
         }
 
-        ~MainWindow() override { persistSession(); }
+        ~MainWindow() override
+        {
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                removeKeyListener(content->getDiffShortcutListener());
+
+            persistSession();
+        }
+
+        bool keyPressed(const juce::KeyPress& key) override
+        {
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                if (content->handleDiffShortcutKey(key))
+                    return true;
+
+            return DocumentWindow::keyPressed(key);
+        }
 
         void closeButtonPressed() override
         {

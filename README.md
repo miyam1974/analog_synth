@@ -43,7 +43,7 @@ FILTER / AMPLIFIER の EG グラフ上の再生位置に点を表示
 | LFO | LFO1 / LFO2（RATE / DEPTH、Pitch / Filter / Amp、RATE 連動 LED） |
 | 演奏 | 16 ボイス、MONO、ALL OFF（全音停止） |
 | プリセット | 内蔵 4 種類 + ユーザープリセット。SAVE（上書き）/ SAVE AS / LOAD / RESET |
-| 比較 | **DIFF** — 起動時または最後の RESET / LOAD 時の音色と A/B 比較（`D` キーでも切替） |
+| 比較 | **DIFF** — 起動時または最後の RESET / LOAD 時の音色と A/B 比較（Space キーでも切替） |
 | セッション | 終了時に音色・プリセット・MIDI・ウィンドウ位置を `%APPDATA%` に保存 |
 | ヘルプ | ホバー時に日本語でヘルプ表示（SYSTEM フッター、14pt） |
 | アイコン | Windows exe: 黄緑背景に黒字 **Nex**（`Resources/Icons/`） |

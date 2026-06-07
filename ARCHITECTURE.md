@@ -361,7 +361,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 | **PRESET**                       | プリセット選択（内蔵 + ユーザー）                    |
 | **SAVE** / **SAVE AS**           | ユーザープリセット上書き / 別名保存（編集時のみ有効）        |
 | **LOAD** / **RESET**             | JSON ファイル読込 / INIT 相当へ復帰              |
-| **DIFF**                         | 基準音色との A/B 比較（`D` キーでも切替）             |
+| **DIFF**                         | 基準音色との A/B 比較（Space キーでも切替）           |
 | **MASTER**                       | 出力レベル（**%** 表示、内部 0〜1）                |
 
 ### モジュールパネル
@@ -404,7 +404,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 - **DIFF ON**: 基準パラメータを適用（MASTER は維持）。`SynthEditor::setParametersLocked(true)` で UI ロック
   - 操作可: ALL OFF / MASTER / MIDI IN / DIFF（＋仮想キーボード・外部 MIDI 演奏）
 - **DIFF OFF**: トグル前のスナップショットへ復帰
-- キーボード **`D`** でトグル（`MainComponent::handleDiffKeyPress`）
+- キーボード **Space** でトグル（`MainComponent::handleDiffKeyPress`）
 
 ### OSC2 トグル
 
