@@ -106,6 +106,7 @@ flowchart TB
 - **`MainComponent`** — main UI and audio
   - `juce::AudioAppComponent` — audio I/O
   - `juce::MidiInputCallback` — external MIDI
+  - PC keyboard **ON/OFF**, `PcKeyboardDisplay`, `DiffShortcutKeyListener` (Space → DIFF)
 
 ### Audio block (`getNextAudioBlock`)
 
@@ -354,7 +355,8 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 ## UI architecture (`SynthEditor` + `Source/UI/`)
 
 `MainComponent` = compact header (title + subtitle, **28px** tall) + `SynthEditor` + on-screen keyboard
-(`MidiKeyboardComponent`, MIDI 36–96). Initial window **1080×680**; restores bounds from last session when available.
+(`MidiKeyboardComponent`, MIDI 36–96) + right **PC keyboard strip** (**ON / OFF** + `PcKeyboardDisplay`).
+Initial window **1080×680**; restores bounds from last session when available. Right strip **188px** (38px toggles + ~150px diagram).
 
 ### Master row (top of `SynthEditor`)
 
@@ -396,6 +398,18 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 | `SubOctGroupFrame` | Corner-bracket frame for SUB octave buttons |
 | `AdsrDisplay` | ADSR curve + playheads |
 | `LfoRateLed` | LFO phase LED (`GlobalLfo::Index` for LFO1/LFO2) |
+| `PcKeyboardDisplay` | PC key layout diagram (press highlight; click restores play focus) |
+
+### PC keyboard play (`Main.cpp` + `PcKeyboardDisplay`)
+
+- **ON / OFF** (`ToggleButton`, radio group 9101) → `setPcKeyboardEnabled`
+  - **ON**: `applyDefaultPcKeyMappings` sets JUCE default mapping (`awsedftgyhujkolp;`) on `MidiKeyboardComponent`
+  - **OFF**: `clearKeyMappings` (releases notes held via PC keys)
+- **Focus**: `MidiKeyboardComponent::keyStateChanged` only runs when that component has keyboard focus
+  - `requestPcKeyboardFocus()` — double `callAsync` then `grabKeyboardFocus`
+  - Called after `MainWindow` `setVisible`, on **ON**, and when clicking the PC key diagram
+- **`PcKeyboardDisplay`**: 30 Hz timer polls `KeyPress::isKeyCurrentlyDown` for highlights (no focus needed). `onClicked` → `requestPcKeyboardFocus`
+- **DIFF shortcut**: **Space** via `DiffShortcutKeyListener` (registered on `MainComponent`, virtual keyboard, `SynthEditor`, `MainWindow`). Does not conflict with ASDF play keys
 
 ### Help
 
@@ -408,7 +422,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 - **DIFF ON**: applies baseline (keeps MASTER). `SynthEditor::setParametersLocked(true)` locks UI
   - Still usable: ALL OFF / MASTER / MIDI IN / DIFF (+ on-screen keyboard / external MIDI)
 - **DIFF OFF**: restores pre-toggle snapshot
-- **Space** key toggles (`MainComponent::handleDiffKeyPress`)
+- **Space** key toggles (`DiffShortcutKeyListener`)
 
 ### OSC2 toggle
 
@@ -472,7 +486,7 @@ analog_synth/
 │       ├── nexus-osc-ui.png
 │       └── playing.png
 └── Source/
-    ├── Main.cpp            # app / audio / MIDI / DIFF
+    ├── Main.cpp            # app / audio / MIDI / DIFF / PC keyboard
     ├── AppState.*          # session JSON
     ├── SynthEditor.*
     ├── SynthVoice.*
@@ -491,6 +505,7 @@ analog_synth/
         ├── WaveformButton.*
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
+        ├── PcKeyboardDisplay.*
         └── SynthTheme.h
 ```
 
@@ -567,6 +582,7 @@ replace `SynthParameters` with `APVTS` or an equivalent parameter bus.
 | Preset format / dirty state | `PresetManager.cpp` |
 | Session JSON | `AppState.cpp` |
 | DIFF / baseline | `Main.cpp` |
+| PC keyboard (ASDF) | `Main.cpp`, `UI/PcKeyboardDisplay.*` |
 | OSC2 toggle | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp` |
 | MIDI / audio I/O | `Main.cpp`, `AudioAppComponent` / `AudioDeviceManager` |
 | Windows icon | `CMakeLists.txt`, `Resources/Icons/*` |

@@ -17,7 +17,7 @@
 | マスター行 | ALL OFF / MONO / PRESET / SAVE / SAVE AS / LOAD / RESET / DIFF / MASTER |
 | モジュールパネル | OSCILLATOR / MIXER / FILTER / AMPLIFIER / LFO（左→右） |
 | SYSTEM フッター | MIDI IN、ステータス行（ヘルプ / MIDI 状態） |
-| 仮想キーボード | 画面下部、マウス演奏用 |
+| 仮想キーボード | 画面下部。マウス演奏。右端に **PC キーボード図** と **ON / OFF** |
 
 モジュール幅（参考）: OSC **21%** / MIXER **17%** / FILTER **23%** / AMP **19%** / 残り LFO。
 
@@ -56,7 +56,7 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | DIFF ON | 基準の全パラメータを適用（**MASTER** は保持）。UI は **ALL OFF / MASTER / MIDI IN / DIFF** のみ操作可 |
 | DIFF OFF | DIFF ON 前のスナップショットへ復帰（MASTER は DIFF 中の値を維持） |
 | キーボード | Space キーで ON/OFF 切替（モーダルダイアログ表示中は無効） |
-| 演奏 | 仮想キーボード・外部 MIDI は DIFF 中も有効 |
+| 演奏 | 仮想キーボード・**PC キーボード（ON 時）**・外部 MIDI は DIFF 中も有効 |
 
 ---
 
@@ -171,7 +171,9 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 
 ---
 
-## 8. 仮想キーボード
+## 8. 仮想キーボード・PC キーボード（ASDF）
+
+### 8a. 仮想キーボード（`MidiKeyboardComponent`）
 
 | 項目 | 内容 |
 | ---- | ---- |
@@ -179,6 +181,26 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | 音域 | MIDI 36〜96（C1〜C7 付近） |
 | 表示 | 押下中キーのハイライト |
 | 併用 | 外部 MIDI と同時に `MidiKeyboardState` へマージ |
+
+### 8b. PC キーボード演奏
+
+| UI | 種別 | 説明 |
+| -- | ---- | ---- |
+| **ON / OFF** | ラジオ式トグル（上下配置） | **ON**: PC キー → MIDI マッピングを有効化。**OFF**: マッピング解除（押下中の PC キー音は停止） |
+| **PC キー図** | 表示 | 2 段のキー配列。押下中キーをハイライト（OS のキー状態を参照） |
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 既定 | 起動時 **ON** |
+| キー配列 | JUCE 標準 QWERTY（`awsedftgyhujkolp;`） |
+| 下段（白鍵） | **A S D F G H J K L +** — 物理キー **A〜L** と **;**（**+** 表示） |
+| 上段（黒鍵） | **S D T Y U O P**（図上ラベル）— 物理キー **W E T Y U O P**（上段 **S/D** は **W/E** の位置表示） |
+| フォーカス | PC キーで**発音**するには `MidiKeyboardComponent` がキーボードフォーカスを持つ必要がある |
+| フォーカス移動 | **ON** 選択時、起動後（ウィンドウ表示完了後）、**ON** 再クリック、**PC キー図**クリックで仮想鍵盤へフォーカス |
+| 実装 | `Main.cpp` — `setPcKeyboardEnabled`, `applyDefaultPcKeyMappings`, `requestPcKeyboardFocus` |
+| 表示 | `UI/PcKeyboardDisplay.*` — 30 Hz でキー状態をポーリングして描画 |
+
+**Space** キーは PC 演奏ではなく **DIFF** 切替専用（`DiffShortcutKeyListener`）。ASDF 演奏と競合しない。
 
 オーディオデバイスやバッファサイズの UI は無い（OS / JUCE デフォルト出力）。
 
@@ -246,6 +268,7 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | MIDI 入力 | 外部 MIDI の受信・演奏 | **MIDI IN** のみ UI あり。チャンネルフィルタ等の UI は無い |
 | ポリフォニー | 最大 16 ボイス | サブタイトル表記のみ。**発音数の動的表示 UI は無い** |
 | セッション | 終了時に `session.json` へ全パラメータ・プリセット・MIDI・ウィンドウを保存 | UI からの手動保存は無し |
+| PC キーボード演奏 | ASDF 等で演奏、ON/OFF、キー図表示 | **ON / OFF**、右端 PC キー図。Space は DIFF 専用 |
 | DIFF 比較 | 基準音色との A/B 切替 | **DIFF** ボタン / Space キー |
 
 ### 未実装

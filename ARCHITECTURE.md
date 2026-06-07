@@ -104,6 +104,7 @@ flowchart TB
 - `**MainComponent**` — 実体の UI とオーディオ処理
   - `juce::AudioAppComponent` — オーディオ I/O
   - `juce::MidiInputCallback` — 外部 MIDI 受信
+  - PC キーボード **ON/OFF**、`PcKeyboardDisplay`、`DiffShortcutKeyListener`（Space → DIFF）
 
 ### オーディオブロック処理（`getNextAudioBlock`）
 
@@ -350,7 +351,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 
 ## UI アーキテクチャ（`SynthEditor` + `Source/UI/`）
 
-`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 仮想キーボード（`MidiKeyboardComponent`、MIDI 36〜96）で構成。ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。
+`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 仮想キーボード（`MidiKeyboardComponent`、MIDI 36〜96）＋ 右端 **PC キーボード欄**（**ON / OFF** ＋ `PcKeyboardDisplay`）で構成。ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。右端パネル幅 **188px**（トグル列 38px ＋ キー図 150px 相当）。
 
 ### マスター行（`SynthEditor` 上部）
 
@@ -392,6 +393,19 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 | `SubOctGroupFrame`      | SUB オクターブボタン用角括弧フレーム                           |
 | `AdsrDisplay`           | ADSR 曲線 + 再生ヘッド                                |
 | `LfoRateLed`            | LFO 位相 LED（`GlobalLfo::Index` で LFO1/LFO2 を指定） |
+| `PcKeyboardDisplay`     | PC キー配列図（押下ハイライト、クリックで演奏フォーカス移動）         |
+
+### PC キーボード演奏（`Main.cpp` + `PcKeyboardDisplay`）
+
+- **ON / OFF**（`ToggleButton`、ラジオグループ 9101）→ `setPcKeyboardEnabled`
+  - **ON**: `applyDefaultPcKeyMappings` で JUCE 標準マッピング（`awsedftgyhujkolp;`）を `MidiKeyboardComponent` に設定
+  - **OFF**: `clearKeyMappings`（押下中 PC キー音は `resetAnyKeysInUse` 経由で停止）
+- **フォーカス**: `MidiKeyboardComponent::keyStateChanged` がキーイベントを受け取るにはコンポーネントへのキーボードフォーカスが必要
+  - `requestPcKeyboardFocus()` — 二重 `callAsync` でレイアウト後に `grabKeyboardFocus`
+  - 起動時: `MainWindow` で `setVisible` 後に呼び出し
+  - **ON** 選択・**PC キー図**クリック時にも呼び出し
+- **`PcKeyboardDisplay`**: 30 Hz タイマーで `KeyPress::isKeyCurrentlyDown` を参照し描画（フォーカス不要）。`onClicked` → `requestPcKeyboardFocus`
+- **DIFF ショートカット**: **Space** は `DiffShortcutKeyListener`（`MainComponent` / 仮想鍵盤 / `SynthEditor` / `MainWindow` に登録）。PC 演奏キー（ASDF 等）と競合しない
 
 ### ヘルプ
 
@@ -404,7 +418,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 - **DIFF ON**: 基準パラメータを適用（MASTER は維持）。`SynthEditor::setParametersLocked(true)` で UI ロック
   - 操作可: ALL OFF / MASTER / MIDI IN / DIFF（＋仮想キーボード・外部 MIDI 演奏）
 - **DIFF OFF**: トグル前のスナップショットへ復帰
-- キーボード **Space** でトグル（`MainComponent::handleDiffKeyPress`）
+- キーボード **Space** でトグル（`DiffShortcutKeyListener`）
 
 ### OSC2 トグル
 
@@ -467,7 +481,7 @@ analog_synth/
 │       ├── nexus-osc-ui.png  # メイン画面（README）
 │       └── playing.png       # 演奏時（README）
 └── Source/
-    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / DIFF
+    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / DIFF / PC キーボード ON/OFF
     ├── AppState.*          # セッション JSON
     ├── SynthEditor.*       # メイン UI
     ├── SynthVoice.*        # 1 ボイスの DSP
@@ -486,6 +500,7 @@ analog_synth/
         ├── WaveformButton.*
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
+        ├── PcKeyboardDisplay.*
         └── SynthTheme.h
 ```
 
@@ -559,7 +574,8 @@ Explorer が参照する **リソース ID 1** のアイコンを明示的に埋
 | EG グラフ           | `UI/AdsrDisplay.*`, `EnvelopePlayhead.*`                          |
 | プリセット形式 / dirty 判定 | `PresetManager.cpp`                                               |
 | セッション JSON          | `AppState.cpp`                                                    |
-| DIFF / 比較基準          | `Main.cpp`（`captureDiffBaseline`, `enterDiffMode`）               |
+| DIFF / 比較基準          | `Main.cpp`（`captureDiffBaseline`, `enterDiffMode`, `DiffShortcutKeyListener`） |
+| PC キーボード（ASDF）    | `Main.cpp`, `UI/PcKeyboardDisplay.*`                                              |
 | OSC2 トグル            | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp`        |
 | MIDI / オーディオ I/O | `Main.cpp`（MIDI）、`AudioAppComponent` / `AudioDeviceManager`（出力方式） |
 | Windows アイコン        | `CMakeLists.txt`, `Resources/Icons/*`                             |
