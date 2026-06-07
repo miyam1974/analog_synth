@@ -17,6 +17,7 @@
 #include "UI/FuturisticLookAndFeel.h"
 #include "UI/PcKeyboardDisplay.h"
 #include "UI/SynthTheme.h"
+#include "UI/TransposeControl.h"
 #include "UI/TrebleStaffDisplay.h"
 
 namespace
@@ -26,7 +27,10 @@ constexpr int kHeaderHeight = 28;
 constexpr int kKeyboardHeight = 96;
 constexpr int kKeyboardSidePanelWidth = 188;
 constexpr int kPcKeyboardToggleColumnWidth = 38;
-constexpr int kTrebleStaffWidth = 162;
+constexpr int kKeyboardLowNote = 36;
+constexpr int kKeyboardHighNote = 96;
+constexpr float kKeyboardKeyWidth = 18.0f;
+constexpr int kTransposePanelWidth = 74;
 constexpr int kMargin = 14;
 constexpr int kDefaultWindowWidth = 1080;
 constexpr int kDefaultWindowHeight = 680;
@@ -83,6 +87,37 @@ void setPcKeyboardMappingsEnabled(juce::MidiKeyboardComponent& keyboard, bool en
         keyboard.clearKeyMappings();
 }
 
+int countWhiteKeysInRange(int lowNote, int highNote)
+{
+    int count = 0;
+
+    for (int note = lowNote; note <= highNote; ++note)
+    {
+        switch (((note % 12) + 12) % 12)
+        {
+        case 0:
+        case 2:
+        case 4:
+        case 5:
+        case 7:
+        case 9:
+        case 11:
+            ++count;
+            break;
+        default:
+            break;
+        }
+    }
+
+    return count;
+}
+
+int requiredKeyboardPixelWidth()
+{
+    return juce::roundToInt(static_cast<float>(countWhiteKeysInRange(kKeyboardLowNote, kKeyboardHighNote))
+                            * kKeyboardKeyWidth);
+}
+
 class DiffShortcutKeyListener : public juce::KeyListener
 {
 public:
@@ -114,6 +149,38 @@ private:
 
     std::function<void()> onToggle;
 };
+
+void applyTransposeToMidiBuffer(juce::MidiBuffer& midi, int semitones)
+{
+    if (semitones == 0)
+        return;
+
+    juce::MidiBuffer transposed;
+
+    for (const auto metadata : midi)
+    {
+        auto message = metadata.getMessage();
+        if (message.isNoteOnOrOff())
+        {
+            const auto transposedNote =
+                juce::jlimit(0, 127, message.getNoteNumber() + semitones);
+            if (message.isNoteOn())
+            {
+                message = juce::MidiMessage::noteOn(message.getChannel(), transposedNote,
+                                                    message.getFloatVelocity());
+            }
+            else
+            {
+                message = juce::MidiMessage::noteOff(message.getChannel(), transposedNote,
+                                                     message.getFloatVelocity());
+            }
+        }
+
+        transposed.addEvent(message, metadata.samplePosition);
+    }
+
+    midi.swapWith(transposed);
+}
 } // namespace
 
 class MainComponent : public juce::AudioAppComponent,
@@ -163,8 +230,9 @@ public:
 
         keyboardComponent = std::make_unique<juce::MidiKeyboardComponent>(
             keyboardState, juce::MidiKeyboardComponent::horizontalKeyboard);
-        keyboardComponent->setAvailableRange(36, 96);
-        keyboardComponent->setKeyWidth(18.0f);
+        keyboardComponent->setAvailableRange(kKeyboardLowNote, kKeyboardHighNote);
+        keyboardComponent->setKeyWidth(kKeyboardKeyWidth);
+        keyboardComponent->setScrollButtonsVisible(false);
         keyboardComponent->setColour(juce::MidiKeyboardComponent::whiteNoteColourId,
                                      SynthTheme::background.brighter(0.08f));
         keyboardComponent->setColour(juce::MidiKeyboardComponent::blackNoteColourId,
@@ -203,6 +271,13 @@ public:
         trebleStaffDisplay.setBarLookAndFeel(&keyboardBarLookAndFeel);
         trebleStaffDisplay.getActiveNotes = [this] { return collectActiveMidiNotes(); };
 
+        addAndMakeVisible(transposeControl);
+        transposeControl.setBarLookAndFeel(&keyboardBarLookAndFeel);
+        transposeControl.onTransposeChanged = [this](int)
+        {
+            stopAllSound();
+        };
+
         addAndMakeVisible(editor);
         editor.onMidiSelectionChanged = [this](int id) { reconnectMidiInput(id); };
         editor.onPanic = [this] { stopAllSound(); };
@@ -236,6 +311,7 @@ public:
     {
         pcKeyboardOnButton.setLookAndFeel(nullptr);
         pcKeyboardOffButton.setLookAndFeel(nullptr);
+        transposeControl.setBarLookAndFeel(nullptr);
         editor.removeKeyListener(diffShortcutListener.get());
         if (keyboardComponent != nullptr)
             keyboardComponent->removeKeyListener(diffShortcutListener.get());
@@ -292,6 +368,7 @@ public:
         juce::MidiBuffer incomingMidi;
         midiCollector.removeNextBlockOfMessages(incomingMidi, bufferToFill.numSamples);
         keyboardState.processNextMidiBuffer(incomingMidi, 0, bufferToFill.numSamples, true);
+        applyTransposeToMidiBuffer(incomingMidi, transposeControl.getSemitoneOffset());
         applyMonoModeMidi(incomingMidi);
         synth.renderNextBlock(*bufferToFill.buffer, incomingMidi, 0, bufferToFill.numSamples);
 
@@ -330,15 +407,28 @@ public:
 
         auto keyboardRow = bounds.removeFromBottom(kKeyboardHeight).reduced(kMargin, 6);
         auto sidePanel = keyboardRow.removeFromRight(kKeyboardSidePanelWidth);
-        auto staffArea = keyboardRow.removeFromRight(kTrebleStaffWidth);
-        trebleStaffDisplay.setBounds(staffArea.reduced(2, 4));
+        auto transposeArea = keyboardRow.removeFromRight(kTransposePanelWidth);
+        transposeControl.setBounds(transposeArea.reduced(2, 4));
         auto toggleColumn = sidePanel.removeFromLeft(kPcKeyboardToggleColumnWidth);
         const auto toggleHeight = juce::jmax(18, (toggleColumn.getHeight() - 2) / 2);
         pcKeyboardOnButton.setBounds(toggleColumn.removeFromTop(toggleHeight).reduced(1, 1));
         pcKeyboardOffButton.setBounds(toggleColumn.reduced(1, 1));
         pcKeyboardDisplay.setBounds(sidePanel.reduced(2, 2));
+
+        const auto keyboardWidth = juce::jmin(keyboardRow.getWidth(), requiredKeyboardPixelWidth());
+        const auto staffWidth = juce::jmax(0, keyboardRow.getWidth() - keyboardWidth);
+        if (staffWidth > 0)
+        {
+            auto staffArea = keyboardRow.removeFromRight(staffWidth);
+            trebleStaffDisplay.setBounds(staffArea.reduced(2, 4));
+        }
+        else
+        {
+            trebleStaffDisplay.setBounds({});
+        }
+
         if (keyboardComponent != nullptr)
-            keyboardComponent->setBounds(keyboardRow);
+            keyboardComponent->setBounds(keyboardRow.removeFromLeft(keyboardWidth));
 
         editor.setBounds(bounds.reduced(kMargin, 8));
     }
@@ -479,13 +569,15 @@ private:
                 {
                     if (auto* voice = findMonoSoundingVoice())
                     {
+                        const auto transposedHeld =
+                            juce::jlimit(0, 127, heldNote + transposeControl.getSemitoneOffset());
                         // Only retrigger when returning to a different held note (e.g. release
                         // the top key while a lower key remains). Releasing an already-silent
                         // key must not touch the sounding voice.
-                        if (heldNote != voice->getCurrentMidiNote())
+                        if (transposedHeld != voice->getCurrentMidiNote())
                         {
                             silenceOtherVoices(voice);
-                            voice->legatoNoteOn(heldNote, 1.0f);
+                            voice->legatoNoteOn(transposedHeld, 1.0f);
                         }
                     }
 
@@ -784,6 +876,7 @@ private:
     juce::ToggleButton pcKeyboardOffButton;
     PcKeyboardDisplay pcKeyboardDisplay;
     TrebleStaffDisplay trebleStaffDisplay;
+    TransposeControl transposeControl;
     bool pcKeyboardEnabled = true;
     std::vector<std::unique_ptr<juce::MidiInput>> midiInputs;
     juce::StringArray midiDeviceNames;

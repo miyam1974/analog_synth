@@ -19,6 +19,7 @@ constexpr float kMiddleCLedgerHalfWidth = 18.0f;
 constexpr float kClefAreaWidth = 36.0f;
 constexpr float kStaffRightPadding = 6.0f;
 constexpr int kAccidentalToggleColumnWidth = 18;
+constexpr float kNoteDisplayOffsetX = 5.0f;
 constexpr float kStaffLineThickness = 1.35f;
 constexpr juce::juce_wchar kBravuraGClef = 0xe050;
 constexpr juce::juce_wchar kBravuraAccidentalSharp = 0xe262;
@@ -108,7 +109,9 @@ void TrebleStaffDisplay::setBarLookAndFeel(juce::LookAndFeel* laf)
 
 void TrebleStaffDisplay::resized()
 {
-    auto toggleColumn = getLocalBounds().reduced(1).removeFromLeft(kAccidentalToggleColumnWidth);
+    auto toggleColumn = getLocalBounds().reduced(1);
+    toggleColumn.removeFromLeft(static_cast<int>(kNoteDisplayOffsetX));
+    toggleColumn = toggleColumn.removeFromLeft(kAccidentalToggleColumnWidth);
     const auto halfHeight = toggleColumn.getHeight() / 2;
     sharpButton.setBounds(toggleColumn.removeFromTop(halfHeight).reduced(0, 1));
     flatButton.setBounds(toggleColumn.reduced(0, 1));
@@ -355,7 +358,8 @@ void TrebleStaffDisplay::paint(juce::Graphics& g)
     const auto staffLinesLeft = staffArea.getX() + 2.0f;
     const auto staffLeft = staffArea.getX() + kClefAreaWidth;
     const auto staffRight = staffArea.getRight() - kStaffRightPadding;
-    const auto noteXBase = staffLeft + (staffRight - staffLeft) * 0.62f;
+    const auto noteXBase =
+        staffLeft + (staffRight - staffLeft) * 0.62f + kNoteDisplayOffsetX;
     const auto noteXStagger = lineSpacing * kNoteHeadStaggerRatio;
     const auto headHalfWidth = kNoteHeadHeight * kNoteHeadWidthRatio * 0.5f;
     const auto lineNoteX = noteXBase - noteXStagger;

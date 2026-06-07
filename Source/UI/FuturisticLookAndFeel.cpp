@@ -426,6 +426,16 @@ juce::Font FuturisticLookAndFeel::getLabelFont(juce::Label&)
 
 void FuturisticLookAndFeel::positionComboBoxText(juce::ComboBox& box, juce::Label& label)
 {
+    if (box.getComponentID() == "transposeCombo")
+    {
+        constexpr int left = 2;
+        constexpr int arrowWidth = 14;
+        label.setBounds(left, 1, box.getWidth() - arrowWidth - left, box.getHeight() - 2);
+        label.setFont(SynthTheme::monoFont(14.0f));
+        label.setJustificationType(juce::Justification::centred);
+        return;
+    }
+
     const int left = box.getComponentID() == "systemCombo" ? kSystemComboLeftPadding : 1;
     label.setBounds(left, 1, box.getWidth() - 29 - left, box.getHeight() - 2);
     label.setFont(getComboBoxFont(box));

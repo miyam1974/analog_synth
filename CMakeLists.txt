@@ -70,6 +70,7 @@ target_sources(AnalogSynth
         Source/UI/ModulePanel.cpp
         Source/UI/PcKeyboardDisplay.cpp
         Source/UI/TrebleStaffDisplay.cpp
+        Source/UI/TransposeControl.cpp
         Source/UI/WaveformButton.cpp
 )
 
