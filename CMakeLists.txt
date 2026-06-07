@@ -61,6 +61,7 @@ target_sources(AnalogSynth
         Source/UI/LfoRateLed.cpp
         Source/UI/FuturisticLookAndFeel.cpp
         Source/UI/ModulePanel.cpp
+        Source/UI/PcKeyboardDisplay.cpp
         Source/UI/WaveformButton.cpp
 )
 
