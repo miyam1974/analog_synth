@@ -106,7 +106,7 @@ flowchart TB
 - **`MainComponent`** — main UI and audio
   - `juce::AudioAppComponent` — audio I/O
   - `juce::MidiInputCallback` — external MIDI
-  - PC keyboard **ON/OFF**, `PcKeyboardDisplay`, `DiffShortcutKeyListener` (Space → DIFF)
+  - PC keyboard **ON/OFF**, `PcKeyboardDisplay`, `TrebleStaffDisplay`, `DiffShortcutKeyListener` (Space → DIFF)
 
 ### Audio block (`getNextAudioBlock`)
 
@@ -354,9 +354,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 
 ## UI architecture (`SynthEditor` + `Source/UI/`)
 
-`MainComponent` = compact header (title + subtitle, **28px** tall) + `SynthEditor` + on-screen keyboard
-(`MidiKeyboardComponent`, MIDI 36–96) + right **PC keyboard strip** (**ON / OFF** + `PcKeyboardDisplay`).
-Initial window **1080×680**; restores bounds from last session when available. Right strip **188px** (38px toggles + ~150px diagram).
+`MainComponent` = compact header (title + subtitle, **28px** tall) + `SynthEditor` + bottom **keyboard row**. The keyboard row (**96px** tall), left to right: **on-screen keyboard** (`MidiKeyboardComponent`, MIDI 36–96) → **treble staff** (`TrebleStaffDisplay`, **162px** wide) → **PC keyboard strip** (**ON / OFF** + `PcKeyboardDisplay`, **188px** wide). Initial window **1080×680**; restores bounds from last session when available. PC strip breakdown: **38px** toggles + ~**150px** diagram.
 
 ### Master row (top of `SynthEditor`)
 
@@ -399,6 +397,30 @@ Initial window **1080×680**; restores bounds from last session when available. 
 | `AdsrDisplay` | ADSR curve + playheads |
 | `LfoRateLed` | LFO phase LED (`GlobalLfo::Index` for LFO1/LFO2) |
 | `PcKeyboardDisplay` | PC key layout diagram (press highlight; click restores play focus) |
+| `TrebleStaffDisplay` | Treble-clef staff (live pitch-class display, ♯/♭ spelling toggle) |
+
+### Treble staff (`TrebleStaffDisplay` + `Main.cpp`)
+
+- **Placement**: keyboard row, right of the on-screen keyboard, left of the PC key strip (`kTrebleStaffWidth = 162`)
+- **Data**: `getActiveNotes` callback ← `collectActiveMidiNotes()` (MIDI notes from sounding `SynthVoice` instances)
+- **Refresh**: 30 Hz `Timer` → `repaint`
+- **Font**: `Resources/Bravura.otf` embedded via `juce_add_binary_data(AnalogSynthFonts)`. Clef and accidentals drawn as Bravura SMuFL glyph paths
+- **♯/♭ toggle**: two left `TextButton`s (radio group 9102, default ♭). Labels drawn by `FuturisticLookAndFeel` (`staffAccidentalToggle`)
+- **Note logic** (`TrebleStaffDisplay.cpp`):
+  - Extract pitch classes from active notes, sort, dedupe
+  - Lowest sounding note uses true staff step via `displayStepForPitchClass`
+  - Other pitch classes fold up an octave (`+7` steps) when they would sit below the lowest note
+  - Line vs space noteheads stagger horizontally (`kNoteHeadStaggerRatio`, extra `kSpaceNoteExtraOffsetX` for spaces)
+  - Multiple accidentals sorted in key-signature order (♯ F→C→G→… / ♭ B→E→A→…) and staggered left-to-right (`assignAccidentalColumnRights`)
+  - Middle-C ledger line always shown (`kMiddleCLedgerHalfWidth`)
+
+```text
+Keyboard row (left → right)
+┌──────────────────────────┬─────────────┬──────────────────┐
+│ MidiKeyboardComponent    │ TrebleStaff │ ON/OFF + PcKeyboard│
+│ (mouse play)             │ Display     │ Display          │
+└──────────────────────────┴─────────────┴──────────────────┘
+```
 
 ### PC keyboard play (`Main.cpp` + `PcKeyboardDisplay`)
 
@@ -477,6 +499,7 @@ analog_synth/
 ├── SPEC.md
 ├── LICENSE
 ├── Resources/
+│   ├── Bravura.otf             # SMuFL font for staff (BinaryData)
 │   └── Icons/
 │       ├── app_icon.png        # icon source (Nex on yellow-green)
 │       ├── AppPrimaryIcon.rc   # exe resource ID 1
@@ -486,7 +509,7 @@ analog_synth/
 │       ├── nexus-osc-ui.png
 │       └── playing.png
 └── Source/
-    ├── Main.cpp            # app / audio / MIDI / DIFF / PC keyboard
+    ├── Main.cpp            # app / audio / MIDI / DIFF / PC keyboard / treble staff
     ├── AppState.*          # session JSON
     ├── SynthEditor.*
     ├── SynthVoice.*
@@ -506,6 +529,7 @@ analog_synth/
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
         ├── PcKeyboardDisplay.*
+        ├── TrebleStaffDisplay.*
         └── SynthTheme.h
 ```
 
@@ -583,6 +607,7 @@ replace `SynthParameters` with `APVTS` or an equivalent parameter bus.
 | Session JSON | `AppState.cpp` |
 | DIFF / baseline | `Main.cpp` |
 | PC keyboard (ASDF) | `Main.cpp`, `UI/PcKeyboardDisplay.*` |
+| Treble staff | `UI/TrebleStaffDisplay.*`, `Main.cpp` (`collectActiveMidiNotes`), `Resources/Bravura.otf` |
 | OSC2 toggle | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp` |
 | MIDI / audio I/O | `Main.cpp`, `AudioAppComponent` / `AudioDeviceManager` |
 | Windows icon | `CMakeLists.txt`, `Resources/Icons/*` |

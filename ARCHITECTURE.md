@@ -104,7 +104,7 @@ flowchart TB
 - `**MainComponent**` — 実体の UI とオーディオ処理
   - `juce::AudioAppComponent` — オーディオ I/O
   - `juce::MidiInputCallback` — 外部 MIDI 受信
-  - PC キーボード **ON/OFF**、`PcKeyboardDisplay`、`DiffShortcutKeyListener`（Space → DIFF）
+  - PC キーボード **ON/OFF**、`PcKeyboardDisplay`、`TrebleStaffDisplay`、`DiffShortcutKeyListener`（Space → DIFF）
 
 ### オーディオブロック処理（`getNextAudioBlock`）
 
@@ -351,7 +351,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 
 ## UI アーキテクチャ（`SynthEditor` + `Source/UI/`）
 
-`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 仮想キーボード（`MidiKeyboardComponent`、MIDI 36〜96）＋ 右端 **PC キーボード欄**（**ON / OFF** ＋ `PcKeyboardDisplay`）で構成。ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。右端パネル幅 **188px**（トグル列 38px ＋ キー図 150px 相当）。
+`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 下部 **鍵盤行** で構成。鍵盤行（高さ **96px**）は左から **仮想キーボード**（`MidiKeyboardComponent`、MIDI 36〜96）→ **ト音記号五線譜**（`TrebleStaffDisplay`、幅 **162px**）→ **PC キーボード欄**（**ON / OFF** ＋ `PcKeyboardDisplay`、幅 **188px**）。ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。PC キーボード欄内訳: トグル列 **38px** ＋ キー図 **150px** 相当。
 
 ### マスター行（`SynthEditor` 上部）
 
@@ -394,6 +394,30 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 | `AdsrDisplay`           | ADSR 曲線 + 再生ヘッド                                |
 | `LfoRateLed`            | LFO 位相 LED（`GlobalLfo::Index` で LFO1/LFO2 を指定） |
 | `PcKeyboardDisplay`     | PC キー配列図（押下ハイライト、クリックで演奏フォーカス移動）         |
+| `TrebleStaffDisplay`    | ト音記号五線譜（発音中 pitch class のリアルタイム表示、♯/♭ 切替）   |
+
+### ト音記号五線譜（`TrebleStaffDisplay` + `Main.cpp`）
+
+- **配置**: 鍵盤行で仮想鍵盤の右・PC キー図の左（`kTrebleStaffWidth = 162`）
+- **データ源**: `getActiveNotes` コールバック ← `collectActiveMidiNotes()`（発音中 `SynthVoice` の MIDI ノート）
+- **描画更新**: 30 Hz `Timer` で `repaint`
+- **フォント**: `Resources/Bravura.otf` を `juce_add_binary_data(AnalogSynthFonts)` で埋め込み。ト音記号・臨時記号は Bravura SMuFL グリフを `Path` 描画
+- **♯/♭ 切替**: 左端 `TextButton` 2 個（ラジオグループ 9102、既定 ♭）。ラベルは `FuturisticLookAndFeel` の `staffAccidentalToggle` で描画
+- **音符ロジック**（`TrebleStaffDisplay.cpp`）:
+  - 発音ノートから pitch class を抽出・ソート・重複除去
+  - 最低音は `displayStepForPitchClass` で実音高の staff step を使用
+  - 他の pitch class は最低音 step 以下なら `+7`（1 オクターブ）で折り畳み
+  - 線上/線間で符頭 X を左右にずらし（`kNoteHeadStaggerRatio`、線間は追加 `kSpaceNoteExtraOffsetX`）
+  - 臨時記号は調号順（♯: F→C→G→… / ♭: B→E→A→…）にソートし、glyph 幅 + 隙間で左から右へ列をずらす（`assignAccidentalColumnRights`）
+  - 中央ドの下加線は常時表示（`kMiddleCLedgerHalfWidth`）
+
+```text
+鍵盤行（左 → 右）
+┌──────────────────────────┬─────────────┬──────────────────┐
+│ MidiKeyboardComponent    │ TrebleStaff │ ON/OFF + PcKeyboard│
+│ （マウス演奏）            │ Display     │ Display          │
+└──────────────────────────┴─────────────┴──────────────────┘
+```
 
 ### PC キーボード演奏（`Main.cpp` + `PcKeyboardDisplay`）
 
@@ -472,6 +496,7 @@ analog_synth/
 ├── SPEC.md                 # UI 機能仕様
 ├── LICENSE                 # MIT
 ├── Resources/
+│   ├── Bravura.otf             # 五線譜用 SMuFL フォント（BinaryData）
 │   └── Icons/
 │       ├── app_icon.png        # アイコン元画像（Nex / 黄緑）
 │       ├── AppPrimaryIcon.rc   # exe リソース ID 1
@@ -481,7 +506,7 @@ analog_synth/
 │       ├── nexus-osc-ui.png  # メイン画面（README）
 │       └── playing.png       # 演奏時（README）
 └── Source/
-    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / DIFF / PC キーボード ON/OFF
+    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / DIFF / PC キーボード ON/OFF / 五線譜
     ├── AppState.*          # セッション JSON
     ├── SynthEditor.*       # メイン UI
     ├── SynthVoice.*        # 1 ボイスの DSP
@@ -501,6 +526,7 @@ analog_synth/
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
         ├── PcKeyboardDisplay.*
+        ├── TrebleStaffDisplay.*
         └── SynthTheme.h
 ```
 
@@ -576,6 +602,7 @@ Explorer が参照する **リソース ID 1** のアイコンを明示的に埋
 | セッション JSON          | `AppState.cpp`                                                    |
 | DIFF / 比較基準          | `Main.cpp`（`captureDiffBaseline`, `enterDiffMode`, `DiffShortcutKeyListener`） |
 | PC キーボード（ASDF）    | `Main.cpp`, `UI/PcKeyboardDisplay.*`                                              |
+| ト音記号五線譜           | `UI/TrebleStaffDisplay.*`, `Main.cpp`（`collectActiveMidiNotes`）, `Resources/Bravura.otf` |
 | OSC2 トグル            | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp`        |
 | MIDI / オーディオ I/O | `Main.cpp`（MIDI）、`AudioAppComponent` / `AudioDeviceManager`（出力方式） |
 | Windows アイコン        | `CMakeLists.txt`, `Resources/Icons/*`                             |

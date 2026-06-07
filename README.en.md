@@ -18,7 +18,7 @@ Top: presets, MONO, ALL OFF, SAVE / SAVE AS, LOAD, RESET, DIFF, MASTER
 
 Center: synth modules (compact header + five panels)
 
-Bottom: on-screen keyboard (mouse) + PC keyboard diagram (ASDF play) with **ON / OFF** on the right
+Bottom: on-screen keyboard (mouse) + **treble staff** (live pitch display) + PC keyboard diagram (ASDF play) with **ON / OFF** on the right
 
 ### While playing
 
@@ -42,6 +42,7 @@ Playhead dots on the FILTER and AMPLIFIER EG graphs
 | Amp | Amp ADSR graph |
 | LFO | LFO1 / LFO2 (RATE / DEPTH, Pitch / Filter / Amp, RATE-synced LEDs) |
 | Performance | 16 voices, MONO, ALL OFF. On-screen keyboard (mouse), **PC keyboard (ASDF etc.)**, external MIDI |
+| Treble staff | **Treble-clef staff** (`TrebleStaffDisplay`) between the on-screen keyboard and PC key diagram. Shows sounding pitch classes in real time. **♯ / ♭** spelling toggle on the left (default ♭) |
 | Presets | 4 built-in + user presets. SAVE (overwrite), SAVE AS, LOAD, RESET |
 | Compare | **DIFF** — A/B against tone at launch or last RESET / LOAD (Space key toggles) |
 | Session | On quit, saves tone, preset, MIDI, and window bounds under `%APPDATA%` |
@@ -165,7 +166,7 @@ After you push a new tag and Actions succeeds, a fresh EXE appears there.
 1. Connect a USB MIDI keyboard (optional)
 2. Run `AnalogSynth.exe` from a [download](#download) or [build](#build)
 3. Under **SYSTEM**, choose **MIDI IN** (`All Inputs` merges all devices)
-4. Tweak modules, then play from the on-screen keyboard, **PC keyboard (when ON)**, or external MIDI
+4. Tweak modules, then play from the on-screen keyboard, **PC keyboard (when ON)**, or external MIDI (the treble staff shows sounding pitches)
 5. **PC keyboard play**: use **ON / OFF** at the bottom-right (**ON** at launch). Click **ON** or the PC key diagram to give the virtual keyboard focus so ASDF keys sound (see table below). **OFF** clears PC key mappings
 6. Hover controls to see Japanese help in the SYSTEM footer
 7. **RESET** restores factory defaults (INIT). RESET / LOAD also refresh the **DIFF** comparison baseline
@@ -214,6 +215,7 @@ analog_synth/
 ├── SPEC.md
 ├── LICENSE
 ├── Resources/
+│   ├── Bravura.otf           # SMuFL font for treble clef and accidentals
 │   └── Icons/
 │       ├── app_icon.png          # Windows icon source (Nex)
 │       ├── AppPrimaryIcon.rc     # exe icon (resource ID 1)
@@ -242,6 +244,7 @@ analog_synth/
         ├── WaveformButton.*
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
+        ├── TrebleStaffDisplay.*
         └── SynthTheme.h
 ```
 
