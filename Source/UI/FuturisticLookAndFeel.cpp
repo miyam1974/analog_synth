@@ -11,7 +11,15 @@ constexpr int kSystemComboLeftPadding = 8;
 bool isMasterBarButton(const juce::TextButton& button)
 {
     const auto& id = button.getComponentID();
-    return id == "panic" || id == "masterBarText" || id == "presetSave" || id == "diffToggle";
+    return id == "panic" || id == "masterBarText" || id == "presetSave" || id == "diffToggle"
+        || id == "staffAccidentalToggle";
+}
+
+void drawStaffAccidentalToggleText(juce::Graphics& g, juce::TextButton& button, juce::Colour colour)
+{
+    g.setColour(colour);
+    g.setFont(juce::Font(juce::FontOptions("Segoe UI Symbol", 19.0f, juce::Font::plain)));
+    g.drawText(button.getButtonText(), button.getLocalBounds(), juce::Justification::centred);
 }
 
 void drawMasterBarButtonText(juce::Graphics& g, juce::TextButton& button, juce::Colour colour)
@@ -193,6 +201,20 @@ void FuturisticLookAndFeel::drawButtonText(juce::Graphics& g, juce::TextButton& 
     if (button.getComponentID() == "diffToggle")
     {
         drawDiffToggleButtonText(g, button, button.getToggleState(), highlighted, down);
+        return;
+    }
+
+    if (button.getComponentID() == "staffAccidentalToggle")
+    {
+        if (! button.isEnabled())
+        {
+            drawStaffAccidentalToggleText(g, button, SynthTheme::textDim.withAlpha(0.35f));
+            return;
+        }
+
+        const auto colour = button.findColour(button.getToggleState() ? juce::TextButton::textColourOnId
+                                                                      : juce::TextButton::textColourOffId);
+        drawStaffAccidentalToggleText(g, button, colour);
         return;
     }
 

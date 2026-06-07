@@ -17,6 +17,7 @@
 #include "UI/FuturisticLookAndFeel.h"
 #include "UI/PcKeyboardDisplay.h"
 #include "UI/SynthTheme.h"
+#include "UI/TrebleStaffDisplay.h"
 
 namespace
 {
@@ -25,6 +26,7 @@ constexpr int kHeaderHeight = 28;
 constexpr int kKeyboardHeight = 96;
 constexpr int kKeyboardSidePanelWidth = 188;
 constexpr int kPcKeyboardToggleColumnWidth = 38;
+constexpr int kTrebleStaffWidth = 162;
 constexpr int kMargin = 14;
 constexpr int kDefaultWindowWidth = 1080;
 constexpr int kDefaultWindowHeight = 680;
@@ -197,6 +199,10 @@ public:
         pcKeyboardDisplay.setMappingEnabled(true);
         pcKeyboardDisplay.onClicked = [this] { requestPcKeyboardFocus(); };
 
+        addAndMakeVisible(trebleStaffDisplay);
+        trebleStaffDisplay.setBarLookAndFeel(&keyboardBarLookAndFeel);
+        trebleStaffDisplay.getActiveNotes = [this] { return collectActiveMidiNotes(); };
+
         addAndMakeVisible(editor);
         editor.onMidiSelectionChanged = [this](int id) { reconnectMidiInput(id); };
         editor.onPanic = [this] { stopAllSound(); };
@@ -324,6 +330,8 @@ public:
 
         auto keyboardRow = bounds.removeFromBottom(kKeyboardHeight).reduced(kMargin, 6);
         auto sidePanel = keyboardRow.removeFromRight(kKeyboardSidePanelWidth);
+        auto staffArea = keyboardRow.removeFromRight(kTrebleStaffWidth);
+        trebleStaffDisplay.setBounds(staffArea.reduced(2, 4));
         auto toggleColumn = sidePanel.removeFromLeft(kPcKeyboardToggleColumnWidth);
         const auto toggleHeight = juce::jmax(18, (toggleColumn.getHeight() - 2) / 2);
         pcKeyboardOnButton.setBounds(toggleColumn.removeFromTop(toggleHeight).reduced(1, 1));
@@ -348,6 +356,23 @@ private:
     {
         if (pcKeyboardEnabled && keyboardComponent != nullptr)
             keyboardComponent->grabKeyboardFocus();
+    }
+
+    juce::Array<int> collectActiveMidiNotes() const
+    {
+        juce::Array<int> notes;
+
+        for (int i = 0; i < synth.getNumVoices(); ++i)
+        {
+            if (auto* voice = dynamic_cast<const SynthVoice*>(synth.getVoice(i)))
+            {
+                if (voice->isSoundingForMono())
+                    notes.addIfNotAlreadyThere(voice->getCurrentMidiNote());
+            }
+        }
+
+        notes.sort();
+        return notes;
     }
 
     void setPcKeyboardEnabled(bool enabled)
@@ -758,6 +783,7 @@ private:
     juce::ToggleButton pcKeyboardOnButton;
     juce::ToggleButton pcKeyboardOffButton;
     PcKeyboardDisplay pcKeyboardDisplay;
+    TrebleStaffDisplay trebleStaffDisplay;
     bool pcKeyboardEnabled = true;
     std::vector<std::unique_ptr<juce::MidiInput>> midiInputs;
     juce::StringArray midiDeviceNames;
