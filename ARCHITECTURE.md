@@ -10,16 +10,16 @@ Windows 向け JUCE 8 Standalone アナログ系シンセサイザー **NEXUS OS
 
 ## 概要
 
-| 項目      | 内容                                                                              |
-| ------- | ------------------------------------------------------------------------------- |
-| フレームワーク | JUCE 8.0.6                                                                      |
-| 言語      | C++17                                                                           |
-| ビルド     | CMake + MSVC（`/utf-8`）                                                          |
-| 出力      | Standalone EXE（`build/AnalogSynth_artefacts/Release/AnalogSynth.exe`）           |
-| ライセンス   | 本リポジトリ MIT（[LICENSE](LICENSE)）、JUCE は別ライセンス                                     |
+| 項目      | 内容                                                                            |
+| ------- | ----------------------------------------------------------------------------- |
+| フレームワーク | JUCE 8.0.6                                                                    |
+| 言語      | C++17                                                                         |
+| ビルド     | CMake + MSVC（`/utf-8`）                                                        |
+| 出力      | Standalone EXE（`build/AnalogSynth_artefacts/Release/AnalogSynth.exe`）         |
+| ライセンス   | 本リポジトリ MIT（[LICENSE](LICENSE)）、JUCE は別ライセンス                                   |
 | アプリ版    | `CMakeLists.txt` の `project(VERSION)`（`getApplicationVersion` / EXE メタデータと共通） |
-| ポリフォニー  | 16 ボイス                                                                          |
-| オーディオ   | ステレオ出力（0 in / 2 out）、MIDI 入力対応。Windows では JUCE 経由で **WASAPI** がデフォルト            |
+| ポリフォニー  | 16 ボイス                                                                        |
+| オーディオ   | ステレオ出力（0 in / 2 out）、MIDI 入力対応。Windows では JUCE 経由で **WASAPI** がデフォルト          |
 
 アプリは **UI スレッド** と **オーディオスレッド** の 2 系統で動作する。パラメータは `SynthParameters` の `std::atomic` 経由でスレッド間共有し、ロックフリーで読み書きする。
 
@@ -45,12 +45,12 @@ Windows 向け JUCE 8 Standalone アナログ系シンセサイザー **NEXUS OS
 └───────────────┘   └───────────────┘   └───────────────┘
 ```
 
-| レイヤ             | 責務                              |
-| --------------- | ------------------------------- |
-| **Application** | ウィンドウ、オーディオ/MIDI デバイス接続、ライフサイクル |
-| **UI**          | コントロール表示、ユーザー操作 → パラメータ書き込み     |
-| **State**       | パラメータ保持、プリセット入出力、セッション JSON、UI 可視化用の再生ヘッド  |
-| **Audio**       | サンプル生成、エンベロープ、フィルター、LFO         |
+| レイヤ             | 責務                                        |
+| --------------- | ----------------------------------------- |
+| **Application** | ウィンドウ、オーディオ/MIDI デバイス接続、ライフサイクル           |
+| **UI**          | コントロール表示、ユーザー操作 → パラメータ書き込み               |
+| **State**       | パラメータ保持、プリセット入出力、セッション JSON、UI 可視化用の再生ヘッド |
+| **Audio**       | サンプル生成、エンベロープ、フィルター、LFO                   |
 
 ---
 
@@ -104,7 +104,7 @@ flowchart TB
 - `**MainComponent**` — 実体の UI とオーディオ処理
   - `juce::AudioAppComponent` — オーディオ I/O
   - `juce::MidiInputCallback` — 外部 MIDI 受信
-  - PC キーボード **ON/OFF**、`PcKeyboardDisplay`、`TrebleStaffDisplay`、`DiffShortcutKeyListener`（Space → DIFF）
+  - PC キーボード **ON/OFF**、`PcKeyboardDisplay`、`TrebleStaffDisplay`、`TransposeControl`、`DiffShortcutKeyListener`（Space → DIFF）
 
 ### オーディオブロック処理（`getNextAudioBlock`）
 
@@ -112,9 +112,10 @@ flowchart TB
 2. `GlobalLfo::prepareForBlock` — LFO1 / LFO2 のサイン波をブロック単位で事前計算
 3. `MidiMessageCollector` から MIDI を取得
 4. `MidiKeyboardState` で仮想キーボード MIDI をマージ
-5. MONO モード時は `applyMonoNoteStealing` で他ノート OFF を挿入
-6. `juce::Synthesiser::renderNextBlock` — 全ボイス合成
-7. `SynthParameters::getMasterLevel` でマスターゲイン適用
+5. `applyTransposeToMidiBuffer` — `TransposeControl` の半音オフセットを Note On/Off に適用
+6. MONO モード時は `applyMonoNoteStealing` で他ノート OFF を挿入
+7. `juce::Synthesiser::renderNextBlock` — 全ボイス合成
+8. `SynthParameters::getMasterLevel` でマスターゲイン適用
 
 ### MIDI 入力
 
@@ -260,12 +261,12 @@ flowchart LR
 
 ### オシレーター（`SynthVoice::mixOscillators`）
 
-| ソース   | 内容                                            |
-| ----- | --------------------------------------------- |
-| OSC1  | `Waveform` 選択（Sine / Saw / Square / Triangle） |
+| ソース   | 内容                                                       |
+| ----- | -------------------------------------------------------- |
+| OSC1  | `Waveform` 選択（Sine / Saw / Square / Triangle）            |
 | OSC2  | 独立波形 + DET2（±100 cent）。`osc2Enabled` が false のときミックスから除外 |
-| Sub   | OSC1 波形を -1 / -2 オクターブ                        |
-| Noise | ホワイトノイズ                                       |
+| Sub   | OSC1 波形を -1 / -2 オクターブ                                   |
+| Noise | ホワイトノイズ                                                  |
 
 チューニング: TUNE（±12 sem）、FINE（±100 cent）を MIDI ノート周波数に適用。
 
@@ -298,11 +299,11 @@ flowchart LR
 
 ## パラメータモデル（`SynthParameters`）
 
-シングルトン的な **static atomic 変数群**。UI から `set`*、オーディオから `get*` でアクセス。
+シングルトン的な **static atomic 変数群**。UI から `set`*、オーディオから `get`* でアクセス。
 
 | カテゴリ   | 主なパラメータ                                                |
 | ------ | ------------------------------------------------------ |
-| OSC    | 波形 ×2、`osc2Enabled`、レベル、TUNE/FINE、DET2               |
+| OSC    | 波形 ×2、`osc2Enabled`、レベル、TUNE/FINE、DET2                 |
 | MIXER  | Sub / Noise、Glide、V→A / V→F                            |
 | FILTER | Cutoff、Resonance、ENV 量、Key Track、Filter EG             |
 | AMP    | Amp EG（A/D/S/R）                                        |
@@ -351,29 +352,38 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 
 ## UI アーキテクチャ（`SynthEditor` + `Source/UI/`）
 
-`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 下部 **鍵盤行** で構成。鍵盤行（高さ **96px**）は左から **仮想キーボード**（`MidiKeyboardComponent`、MIDI 36〜96）→ **ト音記号五線譜**（`TrebleStaffDisplay`、幅 **162px**）→ **PC キーボード欄**（**ON / OFF** ＋ `PcKeyboardDisplay`、幅 **188px**）。ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。PC キーボード欄内訳: トグル列 **38px** ＋ キー図 **150px** 相当。
+`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 下部 **鍵盤行** で構成。
+
+鍵盤行（高さ **96px**）は左から次の順:
+
+1. **仮想キーボード** — `MidiKeyboardComponent`、MIDI 36〜96、白鍵幅 18px・必要幅 **648px**、スクロールボタン非表示
+2. **ト音記号五線譜** — `TrebleStaffDisplay`、**残り幅**（1080px 幅で約 **142px**）
+3. **移調** — `TransposeControl`、幅 **74px**
+4. **PC キーボード欄** — **ON / OFF** ＋ `PcKeyboardDisplay`、幅 **188px**（内訳: トグル **38px** ＋ キー図 **150px** 相当）
+
+ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。
 
 ### マスター行（`SynthEditor` 上部）
 
-| コントロール                           | 内容                                   |
-| -------------------------------- | ------------------------------------ |
-| **ALL OFF**                      | 全ボイス即時停止（`onPanic` → `stopAllSound`） |
-| **MONO**                         | モノフォニック（ノートスティーリング）                  |
-| **PRESET**                       | プリセット選択（内蔵 + ユーザー）                    |
-| **SAVE** / **SAVE AS**           | ユーザープリセット上書き / 別名保存（編集時のみ有効）        |
-| **LOAD** / **RESET**             | JSON ファイル読込 / INIT 相当へ復帰              |
-| **DIFF**                         | 基準音色との A/B 比較（Space キーでも切替）           |
-| **MASTER**                       | 出力レベル（**%** 表示、内部 0〜1）                |
+| コントロール                 | 内容                                   |
+| ---------------------- | ------------------------------------ |
+| **ALL OFF**            | 全ボイス即時停止（`onPanic` → `stopAllSound`） |
+| **MONO**               | モノフォニック（ノートスティーリング）                  |
+| **PRESET**             | プリセット選択（内蔵 + ユーザー）                   |
+| **SAVE** / **SAVE AS** | ユーザープリセット上書き / 別名保存（編集時のみ有効）         |
+| **LOAD** / **RESET**   | JSON ファイル読込 / INIT 相当へ復帰             |
+| **DIFF**               | 基準音色との A/B 比較（Space キーでも切替）          |
+| **MASTER**             | 出力レベル（**%** 表示、内部 0〜1）               |
 
 ### モジュールパネル
 
-| パネル    | 内容                                                         |
-| ------ | ---------------------------------------------------------- |
-| OSC    | OSC1 / OSC2 各 4 波形（OSC2 は同波形再クリックで OFF）、TUNE / FINE / DET2（RESET 付き） |
-| MIXER  | OSC1 / OSC2 / SUB / NOISE レベル、Sub オクターブ（`SubOctGroupFrame`）、Glide、V-A / V-F    |
-| FILTER | CUT / RES / ENV / KEY、Filter EG グラフ + FA〜FR                |
-| AMP    | Amp EG グラフ + A / D / S / R                                 |
-| LFO    | LFO1 / LFO2（各 RATE/DEPTH、PITCH/FILTER/AMP ルーティング、RATE LED） |
+| パネル    | 内容                                                                          |
+| ------ | --------------------------------------------------------------------------- |
+| OSC    | OSC1 / OSC2 各 4 波形（OSC2 は同波形再クリックで OFF）、TUNE / FINE / DET2（RESET 付き）        |
+| MIXER  | OSC1 / OSC2 / SUB / NOISE レベル、Sub オクターブ（`SubOctGroupFrame`）、Glide、V-A / V-F |
+| FILTER | CUT / RES / ENV / KEY、Filter EG グラフ + FA〜FR                                 |
+| AMP    | Amp EG グラフ + A / D / S / R                                                  |
+| LFO    | LFO1 / LFO2（各 RATE/DEPTH、PITCH/FILTER/AMP ルーティング、RATE LED）                  |
 
 ### SYSTEM フッター
 
@@ -389,19 +399,30 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 | `ModulePanel`           | モジュール枠 + `contentBounds()`                     |
 | `FuturisticLookAndFeel` | ノブ・スライダーの外観                                    |
 | `SynthTheme`            | 色・フォント・装飾ユーティリティ                               |
-| `WaveformButton`        | OSC 波形選択（OSC2 OFF 時は DET2 / OSC2 レベルを非活性化）       |
+| `WaveformButton`        | OSC 波形選択（OSC2 OFF 時は DET2 / OSC2 レベルを非活性化）     |
 | `SubOctGroupFrame`      | SUB オクターブボタン用角括弧フレーム                           |
 | `AdsrDisplay`           | ADSR 曲線 + 再生ヘッド                                |
 | `LfoRateLed`            | LFO 位相 LED（`GlobalLfo::Index` で LFO1/LFO2 を指定） |
-| `PcKeyboardDisplay`     | PC キー配列図（押下ハイライト、クリックで演奏フォーカス移動）         |
-| `TrebleStaffDisplay`    | ト音記号五線譜（発音中 pitch class のリアルタイム表示、♯/♭ 切替）   |
+| `PcKeyboardDisplay`     | PC キー配列図（押下ハイライト、クリックで演奏フォーカス移動）               |
+| `TrebleStaffDisplay`    | ト音記号五線譜（発音中 pitch class のリアルタイム表示、♯/♭ 切替）      |
+| `TransposeControl`      | 移調 UI（♭/♮/♯ + 音名コンボ、半音オフセット表）                  |
+
+### 移調（`TransposeControl` + `Main.cpp`）
+
+- **UI**: 上段 ♭/♮/♯（ラジオ 9103、既定 ♮）、下段コンボ F〜G（既定 C）。LookAndFeel: `transposeCombo` / `staffAccidentalToggle`
+- **オフセット**: `getTransposeSemitoneOffset` ← `kTransposeTable[7][3]`（`TransposeControl.cpp`）。C♮=0、G♭=−6 など
+- **適用**: `applyTransposeToMidiBuffer` — 仮想キーボードと外部 MIDI をマージした直後、シンセ合成前。Note On/Off を 0〜127 にクランプ
+- **変更時**: `onTransposeChanged` → `stopAllSound()`
+- **MONO レガート**: 押下中ノートにオフセットを加算して `legatoNoteOn`
+- **永続化**: セッション JSON には含めない
 
 ### ト音記号五線譜（`TrebleStaffDisplay` + `Main.cpp`）
 
-- **配置**: 鍵盤行で仮想鍵盤の右・PC キー図の左（`kTrebleStaffWidth = 162`）
+- **配置**: 鍵盤行で仮想鍵盤の右・移調パネルの左（幅 = 鍵盤行残幅 − `requiredKeyboardPixelWidth()`）
 - **データ源**: `getActiveNotes` コールバック ← `collectActiveMidiNotes()`（発音中 `SynthVoice` の MIDI ノート）
 - **描画更新**: 30 Hz `Timer` で `repaint`
-- **フォント**: `Resources/Bravura.otf` を `juce_add_binary_data(AnalogSynthFonts)` で埋め込み。ト音記号・臨時記号は Bravura SMuFL グリフを `Path` 描画
+- **フォント**: `Resources/Bravura.otf` を `juce_add_binary_data(AnalogSynthFonts)` で埋め込み。
+  ト音記号・臨時記号は Bravura SMuFL グリフを `Path` 描画
 - **♯/♭ 切替**: 左端 `TextButton` 2 個（ラジオグループ 9102、既定 ♭）。ラベルは `FuturisticLookAndFeel` の `staffAccidentalToggle` で描画
 - **音符ロジック**（`TrebleStaffDisplay.cpp`）:
   - 発音ノートから pitch class を抽出・ソート・重複除去
@@ -410,13 +431,14 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
   - 線上/線間で符頭 X を左右にずらし（`kNoteHeadStaggerRatio`、線間は追加 `kSpaceNoteExtraOffsetX`）
   - 臨時記号は調号順（♯: F→C→G→… / ♭: B→E→A→…）にソートし、glyph 幅 + 隙間で左から右へ列をずらす（`assignAccidentalColumnRights`）
   - 中央ドの下加線は常時表示（`kMiddleCLedgerHalfWidth`）
+  - ♯/♭ トグル・音符・臨時記号は `kNoteDisplayOffsetX`（5px）右にオフセット
 
 ```text
 鍵盤行（左 → 右）
-┌──────────────────────────┬─────────────┬──────────────────┐
-│ MidiKeyboardComponent    │ TrebleStaff │ ON/OFF + PcKeyboard│
-│ （マウス演奏）            │ Display     │ Display          │
-└──────────────────────────┴─────────────┴──────────────────┘
+┌──────────────────────────┬─────────────┬──────────┬──────────────────┐
+│ MidiKeyboardComponent    │ TrebleStaff │ Transpose│ ON/OFF + PcKeyboard│
+│ （マウス演奏）            │ Display     │ Control  │ Display          │
+└──────────────────────────┴─────────────┴──────────┴──────────────────┘
 ```
 
 ### PC キーボード演奏（`Main.cpp` + `PcKeyboardDisplay`）
@@ -428,8 +450,9 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
   - `requestPcKeyboardFocus()` — 二重 `callAsync` でレイアウト後に `grabKeyboardFocus`
   - 起動時: `MainWindow` で `setVisible` 後に呼び出し
   - **ON** 選択・**PC キー図**クリック時にも呼び出し
-- **`PcKeyboardDisplay`**: 30 Hz タイマーで `KeyPress::isKeyCurrentlyDown` を参照し描画（フォーカス不要）。`onClicked` → `requestPcKeyboardFocus`
-- **DIFF ショートカット**: **Space** は `DiffShortcutKeyListener`（`MainComponent` / 仮想鍵盤 / `SynthEditor` / `MainWindow` に登録）。PC 演奏キー（ASDF 等）と競合しない
+- `**PcKeyboardDisplay`**: 30 Hz タイマーで `KeyPress::isKeyCurrentlyDown` を参照し描画（フォーカス不要）。`onClicked` → `requestPcKeyboardFocus`
+- **DIFF ショートカット**: **Space** は `DiffShortcutKeyListener`
+  （`MainComponent` / 仮想鍵盤 / `SynthEditor` / `MainWindow` に登録）。PC 演奏キー（ASDF 等）と競合しない
 
 ### ヘルプ
 
@@ -475,12 +498,12 @@ MIXER / LFO のラベルは列幅いっぱいの 1 行にまとめ、RATE の LE
 
 ## セッション永続化（`AppState`）
 
-| 項目 | 内容 |
-| ---- | ---- |
-| ファイル | `%APPDATA%/NEXUS OSC/session.json` |
-| 保存 | 終了時（`MainWindow::persistSession` → `AppState::save`） |
-| 内容 | 全パラメータ JSON、プリセットインデックス、MIDI IN（All Inputs / デバイス ID）、ウィンドウ bounds |
-| 復元 | 起動時 `AppState::load` → `MainComponent::restoreSession` |
+| 項目   | 内容                                                                 |
+| ---- | ------------------------------------------------------------------ |
+| ファイル | `%APPDATA%/NEXUS OSC/session.json`                                 |
+| 保存   | 終了時（`MainWindow::persistSession` → `AppState::save`）               |
+| 内容   | 全パラメータ JSON、プリセットインデックス、MIDI IN（All Inputs / デバイス ID）、ウィンドウ bounds |
+| 復元   | 起動時 `AppState::load` → `MainComponent::restoreSession`             |
 
 ---
 
@@ -506,7 +529,7 @@ analog_synth/
 │       ├── nexus-osc-ui.png  # メイン画面（README）
 │       └── playing.png       # 演奏時（README）
 └── Source/
-    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / DIFF / PC キーボード ON/OFF / 五線譜
+    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / 移調 / DIFF / PC キーボード ON/OFF / 五線譜
     ├── AppState.*          # セッション JSON
     ├── SynthEditor.*       # メイン UI
     ├── SynthVoice.*        # 1 ボイスの DSP
@@ -527,6 +550,7 @@ analog_synth/
         ├── FuturisticLookAndFeel.*
         ├── PcKeyboardDisplay.*
         ├── TrebleStaffDisplay.*
+        ├── TransposeControl.*
         └── SynthTheme.h
 ```
 
@@ -562,12 +586,12 @@ MSVC ではソース UTF-8 対応のため `/utf-8` を付与。
 
 Explorer が参照する **リソース ID 1** のアイコンを明示的に埋め込む（JUCE 既定の `IDI_ICON1` 文字列名だけでは Explorer に反映されない場合がある）。
 
-| ファイル | 役割 |
-| -------- | ---- |
-| `Resources/Icons/app_icon.png` | 512×512 ソース（黄緑 `#adff2f` + 黒字 **Nex**） |
-| `Resources/Icons/generate_app_icon.py` | PNG 再生成スクリプト |
-| `Resources/Icons/AppPrimaryIcon.rc` | `1 ICON DISCARDABLE "icon.ico"` |
-| ビルド生成 `icon.ico` | `juceaide winicon` が `app_icon.png` から生成（16/32/48/256px） |
+| ファイル                                   | 役割                                                       |
+| -------------------------------------- | -------------------------------------------------------- |
+| `Resources/Icons/app_icon.png`         | 512×512 ソース（黄緑 `#adff2f` + 黒字 **Nex**）                   |
+| `Resources/Icons/generate_app_icon.py` | PNG 再生成スクリプト                                             |
+| `Resources/Icons/AppPrimaryIcon.rc`    | `1 ICON DISCARDABLE "icon.ico"`                          |
+| ビルド生成 `icon.ico`                       | `juceaide winicon` が `app_icon.png` から生成（16/32/48/256px） |
 
 ---
 
@@ -590,19 +614,20 @@ Explorer が参照する **リソース ID 1** のアイコンを明示的に埋
 
 ## 関連ファイル早見表
 
-| やりたいこと           | 触るファイル                                                            |
-| ---------------- | ----------------------------------------------------------------- |
-| 音色・DSP 変更        | `SynthVoice.cpp`, `AdsrEnvelope.h`, `Waveform.h`, `GlobalLfo.h`   |
-| LFO 追加・変更        | `GlobalLfo.h`, `SynthParameters.h`, `SynthEditor.cpp`             |
-| パラメータ追加          | `SynthParameters.h`, `SynthEditor.cpp`, `PresetManager.cpp`       |
-| UI レイアウト         | `SynthEditor.cpp`（`layout`*）                                      |
-| テーマ・見た目          | `UI/SynthTheme.h`, `FuturisticLookAndFeel.*`                      |
-| EG グラフ           | `UI/AdsrDisplay.*`, `EnvelopePlayhead.*`                          |
-| プリセット形式 / dirty 判定 | `PresetManager.cpp`                                               |
-| セッション JSON          | `AppState.cpp`                                                    |
-| DIFF / 比較基準          | `Main.cpp`（`captureDiffBaseline`, `enterDiffMode`, `DiffShortcutKeyListener`） |
-| PC キーボード（ASDF）    | `Main.cpp`, `UI/PcKeyboardDisplay.*`                                              |
-| ト音記号五線譜           | `UI/TrebleStaffDisplay.*`, `Main.cpp`（`collectActiveMidiNotes`）, `Resources/Bravura.otf` |
-| OSC2 トグル            | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp`        |
-| MIDI / オーディオ I/O | `Main.cpp`（MIDI）、`AudioAppComponent` / `AudioDeviceManager`（出力方式） |
-| Windows アイコン        | `CMakeLists.txt`, `Resources/Icons/*`                             |
+| やりたいこと             | 触るファイル                                                                                   |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| 音色・DSP 変更          | `SynthVoice.cpp`, `AdsrEnvelope.h`, `Waveform.h`, `GlobalLfo.h`                          |
+| LFO 追加・変更          | `GlobalLfo.h`, `SynthParameters.h`, `SynthEditor.cpp`                                    |
+| パラメータ追加            | `SynthParameters.h`, `SynthEditor.cpp`, `PresetManager.cpp`                              |
+| UI レイアウト           | `SynthEditor.cpp`（`layout`*）                                                             |
+| テーマ・見た目            | `UI/SynthTheme.h`, `FuturisticLookAndFeel.`*                                             |
+| EG グラフ             | `UI/AdsrDisplay.*`, `EnvelopePlayhead.*`                                                 |
+| プリセット形式 / dirty 判定 | `PresetManager.cpp`                                                                      |
+| セッション JSON         | `AppState.cpp`                                                                           |
+| DIFF / 比較基準        | `Main.cpp`（`captureDiffBaseline`, `enterDiffMode`, `DiffShortcutKeyListener`）            |
+| PC キーボード（ASDF）     | `Main.cpp`, `UI/PcKeyboardDisplay.*`                                                     |
+| 移調                 | `UI/TransposeControl.*`, `Main.cpp`（`applyTransposeToMidiBuffer`）                        |
+| ト音記号五線譜            | `UI/TrebleStaffDisplay.*`, `Main.cpp`（`collectActiveMidiNotes`）, `Resources/Bravura.otf` |
+| OSC2 トグル           | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp`                                 |
+| MIDI / オーディオ I/O   | `Main.cpp`（MIDI）、`AudioAppComponent` / `AudioDeviceManager`（出力方式）                        |
+| Windows アイコン       | `CMakeLists.txt`, `Resources/Icons/*`                                                    |
