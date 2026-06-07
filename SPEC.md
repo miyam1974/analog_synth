@@ -17,7 +17,7 @@
 | マスター行 | ALL OFF / MONO / PRESET / SAVE / SAVE AS / LOAD / RESET / DIFF / MASTER |
 | モジュールパネル | OSCILLATOR / MIXER / FILTER / AMPLIFIER / LFO（左→右） |
 | SYSTEM フッター | MIDI IN、ステータス行（ヘルプ / MIDI 状態） |
-| 鍵盤行（下部） | 左→右: **仮想キーボード** / **ト音記号五線譜**（幅 162px）/ **PC キーボード欄**（ON/OFF + キー図、幅 188px） |
+| 鍵盤行（下部） | 左→右: **仮想キーボード**（必要幅 648px・スクロールなし）/ **ト音記号五線譜**（残り幅）/ **移調**（幅 74px）/ **PC キーボード欄**（ON/OFF + キー図、幅 188px） |
 
 モジュール幅（参考）: OSC **21%** / MIXER **17%** / FILTER **23%** / AMP **19%** / 残り LFO。
 
@@ -206,9 +206,59 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 
 ---
 
-## 8c. ト音記号五線譜（`TrebleStaffDisplay`）
+## 8c. 移調（`TransposeControl`）
 
-仮想鍵盤と PC キー図の間に配置。発音中ボイスの MIDI ノートを **音名（pitch class）単位** で五線譜上に表示する。
+仮想鍵盤の右・五線譜の左に配置。演奏入力（仮想キーボード・PC キーボード・外部 MIDI）の **ノート番号** に半音オフセットを加えてからシンセへ渡す。
+
+| UI | 種別 | 説明 |
+| -- | ---- | ---- |
+| **♭** / **♮** / **♯** | トグル（上段・横並び） | 臨時記号付きの移調先を選択（ラジオグループ 9103）。**起動時既定 ♮** |
+| **F〜G** | コンボ（下段） | 移調先の音名。**起動時既定 C**（表示順: F, E, D, C, B, A, G） |
+
+### 半音オフセット表
+
+`getTransposeSemitoneOffset(letter, accidental)` — `Source/UI/TransposeControl.cpp` の `kTransposeTable[7][3]`。
+
+| 音 | ♮ | ♯ | ♭ |
+| -- | - | - | - |
+| C | 0 | +1 | −1 |
+| D | +2 | +3 | +1 |
+| E | +4 | +5 | +3 |
+| F | +5 | +6 | +4 |
+| G | −5 | −4 | −6 |
+| A | −3 | −2 | −4 |
+| B | −1 | 0 | −2 |
+
+例: **C♮** = 変化なし、**G♭** = −6 半音（5 半音上に聴こえる）。
+
+### 動作
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 適用タイミング | `getNextAudioBlock` 内、`keyboardState` マージ後・シンセ合成前（`applyTransposeToMidiBuffer`） |
+| 対象 | Note On / Note Off のノート番号（0〜127 にクランプ） |
+| 変更時 | `stopAllSound()` で全発音停止 |
+| MONO レガート | 押下中ノートの移調後ノート番号を考慮（`Main.cpp`） |
+| 五線譜 | **移調後**の発音ノートを表示（`collectActiveMidiNotes` はシンセ側のノート） |
+| セッション | **保存対象外**（起動時は C♮） |
+
+### レイアウト定数（参考）
+
+| 定数 | 値 | 備考 |
+| ---- | -- | ---- |
+| `kTransposePanelWidth` | 74 px | `Main.cpp` |
+
+### 実装ファイル
+
+- `Source/UI/TransposeControl.*` — UI・オフセット表
+- `Source/Main.cpp` — `applyTransposeToMidiBuffer`、レイアウト、`onTransposeChanged`
+- `Source/UI/FuturisticLookAndFeel.cpp` — コンボ描画（`transposeCombo`）、♭/♮/♯ ボタン（`staffAccidentalToggle`）
+
+---
+
+## 8d. ト音記号五線譜（`TrebleStaffDisplay`）
+
+仮想鍵盤の右・移調パネルの左に配置。発音中ボイスの MIDI ノートを **音名（pitch class）単位** で五線譜上に表示する。
 
 | UI | 種別 | 説明 |
 | -- | ---- | ---- |
@@ -235,8 +285,9 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 
 | 定数 | 値 | 備考 |
 | ---- | -- | ---- |
-| `kTrebleStaffWidth` | 162 px | `Main.cpp` |
+| 五線譜幅 | 動的 | 鍵盤行の残幅 − 仮想鍵盤必要幅（`requiredKeyboardPixelWidth()`、MIDI 36〜96 で **648 px**）。`Main.cpp` |
 | `kAccidentalToggleColumnWidth` | 18 px | ♯/♭ ボタン列 |
+| `kNoteDisplayOffsetX` | 5 px | ♯/♭ トグル・音符・臨時記号の右オフセット |
 | `kClefAreaWidth` | 36 px | ト音記号領域 |
 
 ### 実装ファイル
@@ -282,6 +333,7 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | MONO | トグルで切替。レガート時 GLIDE が効く |
 | ベロシティ | 外部 MIDI のベロシティを V-A / V-F が反映 |
 | ALL OFF | 即時全停止 |
+| 移調 | 鍵盤行の **移調** パネル（♭/♮/♯ + 音名コンボ）。全 MIDI 入力に半音オフセット。変更時は全音停止 |
 | OSC2 OFF | 波形再クリックで OSC2 出力停止（`osc2Enabled`） |
 
 ---
@@ -294,6 +346,7 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | タイミング | アプリ終了時 |
 | 保存内容 | 全シンセパラメータ、プリセット選択インデックス、MIDI IN 設定、ウィンドウ位置・サイズ |
 | 復元 | 次回起動時に `AppState::load()` で適用 |
+| 保存しない | 移調（`TransposeControl`）、五線譜 ♯/♭ 表記、PC キーボード ON/OFF |
 
 ---
 
@@ -311,6 +364,7 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | ポリフォニー | 最大 16 ボイス | サブタイトル表記のみ。**発音数の動的表示 UI は無い** |
 | セッション | 終了時に `session.json` へ全パラメータ・プリセット・MIDI・ウィンドウを保存 | UI からの手動保存は無し |
 | PC キーボード演奏 | ASDF 等で演奏、ON/OFF、キー図表示 | **ON / OFF**、右端 PC キー図。Space は DIFF 専用 |
+| 移調 | 半音オフセット（仮想鍵盤・PC キー・外部 MIDI） | `TransposeControl`。セッション保存対象外 |
 | ト音記号五線譜 | 発音中音程のリアルタイム表示、♯/♭ 切替 | `TrebleStaffDisplay`。セッション保存対象外 |
 | DIFF 比較 | 基準音色との A/B 切替 | **DIFF** ボタン / Space キー |
 

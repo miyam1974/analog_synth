@@ -10,7 +10,7 @@ Windows 向けのアナログ系シンセサイザー（Standalone）。USB MIDI
 
 ### 実行画面
 
-![NEXUS OSC — 実行画面（1080×680）](docs/images/nexus-osc-ui.png)
+NEXUS OSC — 実行画面（1080×680）
 
 画面サイズ: 1080×680
 
@@ -18,11 +18,11 @@ Windows 向けのアナログ系シンセサイザー（Standalone）。USB MIDI
 
 中央: シンセモジュール（コンパクトヘッダー + 5 パネル）
 
-下部: 仮想キーボード（マウス演奏）＋ **ト音記号の五線譜**（発音中の音程表示）＋右端に PC キーボード図（ASDF 演奏）と **ON / OFF**
+下部: 仮想キーボード（マウス演奏）＋ **ト音記号の五線譜**（発音中の音程表示）＋ **移調**（♭/♮/♯ + 音名）＋右端に PC キーボード図（ASDF 演奏）と **ON / OFF**
 
 ### 演奏時
 
-![NEXUS OSC — 演奏中](docs/images/playing.png)
+NEXUS OSC — 演奏中
 
 仮想キーボードで押下中のキーが点灯
 
@@ -34,20 +34,21 @@ FILTER / AMPLIFIER の EG グラフ上の再生位置に点を表示
 
 ## 機能
 
-| カテゴリ | 内容 |
-| -------- | ---- |
-| オシレータ | OSC1 / OSC2（4 波形。OSC2 は同波形再クリックで OFF）、Sub（-1 / -2 oct）、TUNE / FINE / DET2 |
-| ミキサー | OSC1 / OSC2 / SUB / NOISE レベル、Glide、V-A / V-F（OSC2 OFF 時は OSC2 / DET2 非活性） |
-| フィルタ | ローパス（CUT / RES / ENV / KEY）、Filter EG グラフ |
-| アンプ | Amp ADSR グラフ |
-| LFO | LFO1 / LFO2（RATE / DEPTH、Pitch / Filter / Amp、RATE 連動 LED） |
-| 演奏 | 16 ボイス、MONO、ALL OFF（全音停止）。仮想キーボード（マウス）・**PC キーボード（ASDF 等）**・外部 MIDI |
-| 五線譜 | 仮想鍵盤と PC キー図の間に **ト音記号の五線譜**（`TrebleStaffDisplay`）。発音中の音名をリアルタイム表示。左端で **♯ / ♭** 表記切替（既定 ♭） |
-| プリセット | 内蔵 4 種類 + ユーザープリセット。SAVE（上書き）/ SAVE AS / LOAD / RESET |
-| 比較 | **DIFF** — 起動時または最後の RESET / LOAD 時の音色と A/B 比較（Space キーでも切替） |
-| セッション | 終了時に音色・プリセット・MIDI・ウィンドウ位置を `%APPDATA%` に保存 |
-| ヘルプ | ホバー時に日本語でヘルプ表示（SYSTEM フッター、14pt） |
-| アイコン | Windows exe: 黄緑背景に黒字 **Nex**（`Resources/Icons/`） |
+| カテゴリ  | 内容                                                                         |
+| ----- | -------------------------------------------------------------------------- |
+| オシレータ | OSC1 / OSC2（4 波形。OSC2 は同波形再クリックで OFF）、Sub（-1 / -2 oct）、TUNE / FINE / DET2  |
+| ミキサー  | OSC1 / OSC2 / SUB / NOISE レベル、Glide、V-A / V-F（OSC2 OFF 時は OSC2 / DET2 非活性） |
+| フィルタ  | ローパス（CUT / RES / ENV / KEY）、Filter EG グラフ                                  |
+| アンプ   | Amp ADSR グラフ                                                               |
+| LFO   | LFO1 / LFO2（RATE / DEPTH、Pitch / Filter / Amp、RATE 連動 LED）                 |
+| 演奏    | 16 ボイス、MONO、ALL OFF（全音停止）。仮想キーボード（マウス）・**PC キーボード（ASDF 等）**・外部 MIDI        |
+| 移調    | **移調** パネル。上段 **♭ / ♮ / ♯**（既定 ♮）、下段音名コンボ（F〜G、既定 **C**）。変更時は全音停止           |
+| 五線譜   | **ト音記号の五線譜**。発音中の音名をリアルタイム表示。**♯ / ♭** 表記切替（既定 ♭）                          |
+| プリセット | 内蔵 4 種類 + ユーザープリセット。SAVE（上書き）/ SAVE AS / LOAD / RESET                      |
+| 比較    | **DIFF** — 起動時または最後の RESET / LOAD 時の音色と A/B 比較（Space キーでも切替）               |
+| セッション | 終了時に音色・プリセット・MIDI・ウィンドウ位置を `%APPDATA%` に保存                                 |
+| ヘルプ   | ホバー時に日本語でヘルプ表示（SYSTEM フッター、14pt）                                           |
+| アイコン  | Windows exe: 黄緑背景に黒字 **Nex**（`Resources/Icons/`）                           |
 
 **未実装（予定）**: VST3 / CLAP、FX（コーラス / ディレイ / リバーブ）、ピッチベンド・Mod ホイール、ASIO 有効化、
 SmoothedValue・実効 Cutoff Hz 表示、アルペジエータ・MPE・ポリフォニー表示、オーディオデバイス設定 UI。
@@ -116,16 +117,16 @@ MSVC では `/utf-8` を有効にしており、日本語ヘルプ（`HelpString
 
 ### どこで動くか
 
-| 操作 | 実行場所 |
-| ---- | -------- |
-| ソース編集・`git commit`・`git push` | 開発者 PC |
+| 操作                               | 実行場所                                      |
+| -------------------------------- | ----------------------------------------- |
+| ソース編集・`git commit`・`git push`    | 開発者 PC                                    |
 | Release ビルド・ZIP 作成・Releases への添付 | **GitHub Actions**（`windows-latest` ランナー） |
 
 ローカルで `cmake --build` しても Releases の ZIP は更新されません。`main` への通常 push だけでも更新されません。
 
 ### トリガー
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) が、`v*` 形式のタグ（例: `v0.1.0`）の push を検知したときだけ起動します。
+`[.github/workflows/release.yml](.github/workflows/release.yml)` が、`v`* 形式のタグ（例: `v0.1.0`）の push を検知したときだけ起動します。
 
 ### サーバー上で行われる処理
 
@@ -145,7 +146,7 @@ MSVC では `/utf-8` を有効にしており、日本語ヘルプ（`HelpString
 - GitHub の **Actions** タブで `Release` ワークフローが成功していること
 - **Releases** タブに新しい ZIP が表示されていること
 - Configure ログに `Visual Studio 18 2026` と表示されていること
-  （`Ninja` や `Visual Studio 17 2022` の場合は古いタグ／Re-run の可能性あり）
+（`Ninja` や `Visual Studio 17 2022` の場合は古いタグ／Re-run の可能性あり）
 
 同じタグを付け直す場合は、先に GitHub 上の Release / タグを削除し、
 **修正済み workflow が入った最新の `main` 先端** でタグを付け直してください。
@@ -164,22 +165,24 @@ MSVC では `/utf-8` を有効にしており、日本語ヘルプ（`HelpString
 2. [ダウンロード](#ダウンロード) した、または [ビルド](#ビルド) した `AnalogSynth.exe` を起動する
 3. **SYSTEM** の **MIDI IN** で入力を選択（`All Inputs` で全デバイス）
 4. 各モジュールで音色を調整し、下部の仮想キーボード・**PC キーボード（ON 時）** または外部 MIDI で演奏する（五線譜に押下中の音程が表示される）
-5. **PC キーボード演奏**: 鍵盤右端の **ON / OFF** で有効化（起動時は **ON**）。**ON** または PC キー図をクリックすると演奏用フォーカスが当たり、ASDF 等で鳴る（下表）。**OFF** では PC キー割当を解除
-6. コントロールにマウスを合わせると、SYSTEM 領域に日本語の説明が表示される
-7. **RESET** で工場出荷状態（INIT 相当）に戻す。RESET / LOAD 後は **DIFF** の比較基準も更新される
-8. 音色を編集したあと **DIFF** で基準音色と切り替えて比較できる（比較中は ALL OFF / MASTER / MIDI IN / DIFF のみ操作可）。**Space** キーでも DIFF 切替
-9. ユーザープリセットは **SAVE AS** で新規保存。**SAVE** は読み込み済みユーザープリセットの上書き（編集時のみ有効）
-10. アプリを終了すると、音色・プリセット選択・MIDI 選択・ウィンドウ位置が次回起動時に復元される
+5. **移調**: 五線譜の右にある **♭ / ♮ / ♯** と音名コンボで移調先を選ぶ（既定 **C♮**）。仮想鍵盤・PC キー・外部 MIDI すべてに適用。設定変更時は発音が止まる
+6. **PC キーボード演奏**: 鍵盤右端の **ON / OFF** で有効化（起動時は **ON**）。
+   **ON** または PC キー図をクリックすると演奏用フォーカスが当たり、ASDF 等で鳴る（下表）。**OFF** では PC キー割当を解除
+7. コントロールにマウスを合わせると、SYSTEM 領域に日本語の説明が表示される
+8. **RESET** で工場出荷状態（INIT 相当）に戻す。RESET / LOAD 後は **DIFF** の比較基準も更新される
+9. 音色を編集したあと **DIFF** で基準音色と切り替えて比較できる（比較中は ALL OFF / MASTER / MIDI IN / DIFF のみ操作可）。**Space** キーでも DIFF 切替
+10. ユーザープリセットは **SAVE AS** で新規保存。**SAVE** は読み込み済みユーザープリセットの上書き（編集時のみ有効）
+11. アプリを終了すると、音色・プリセット選択・MIDI 選択・ウィンドウ位置が次回起動時に復元される（**移調設定は復元されない**）
 
 ### PC キーボード（ASDF）配列
 
 起動時 **ON** のとき、PC キーで仮想鍵盤と同様に演奏できます（JUCE 標準の QWERTY マッピング）。
 
-| 上段（黒鍵相当） | （空） | S | D | （空） | T | Y | U | （空） | O | P |
-| ---------------- | ------ | - | - | ------ | - | - | - | ------ | - | - |
-| 押すキー | | W | E | | T | Y | U | | O | P |
-| 下段（白鍵相当） | A | S | D | F | G | H | J | K | L | + |
-| 押すキー | A | S | D | F | G | H | J | K | L | ; |
+| 上段（黒鍵相当） | （空） | S   | D   | （空） | T   | Y   | U   | （空） | O   | P   |
+| -------- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 押すキー     |     | W   | E   |     | T   | Y   | U   |     | O   | P   |
+| 下段（白鍵相当） | A   | S   | D   | F   | G   | H   | J   | K   | L   | +   |
+| 押すキー     | A   | S   | D   | F   | G   | H   | J   | K   | L   | ;   |
 
 - 図上の **S / D**（上段）は物理キー **W / E** に対応（黒鍵位置の表示）
 - **+** は **;**（セミコロン）キー
@@ -241,7 +244,9 @@ analog_synth/
         ├── WaveformButton.*
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
+        ├── PcKeyboardDisplay.*
         ├── TrebleStaffDisplay.*
+        ├── TransposeControl.*
         └── SynthTheme.h
 ```
 
@@ -249,11 +254,11 @@ analog_synth/
 
 ## ドキュメント
 
-| ファイル | 内容 |
-| -------- | ---- |
-| [README.md](README.md) / [README.en.md](README.en.md) | 概要・ビルド・使い方 |
+| ファイル                                                                          | 内容                                  |
+| ----------------------------------------------------------------------------- | ----------------------------------- |
+| [README.md](README.md) / [README.en.md](README.en.md)                         | 概要・ビルド・使い方                          |
 | [ARCHITECTURE.md](ARCHITECTURE.md) / [ARCHITECTURE.en.md](ARCHITECTURE.en.md) | 詳細設計（レイヤ、信号フロー、WASAPI/ASIO、スレッド、UI） |
-| [SPEC.md](SPEC.md) | UI 機能仕様（画面上のコントロール網羅） |
+| [SPEC.md](SPEC.md)                                                            | UI 機能仕様（画面上のコントロール網羅）               |
 
 開発・改修時は **[ARCHITECTURE.md](ARCHITECTURE.md)** を参照してください。
 

@@ -11,16 +11,16 @@ Getting started and build steps: [README.en.md](README.en.md) ([日本語](READM
 
 ## Overview
 
-| Item | Details |
-| ---- | ------- |
-| Framework | JUCE 8.0.6 |
-| Language | C++17 |
-| Build | CMake + MSVC (`/utf-8`) |
-| Output | Standalone EXE (`build/AnalogSynth_artefacts/Release/AnalogSynth.exe`) |
-| License | MIT for this repo ([LICENSE](LICENSE)); JUCE under its own license |
+| Item        | Details                                                                                     |
+| ----------- | ------------------------------------------------------------------------------------------- |
+| Framework   | JUCE 8.0.6                                                                                  |
+| Language    | C++17                                                                                       |
+| Build       | CMake + MSVC (`/utf-8`)                                                                     |
+| Output      | Standalone EXE (`build/AnalogSynth_artefacts/Release/AnalogSynth.exe`)                      |
+| License     | MIT for this repo ([LICENSE](LICENSE)); JUCE under its own license                          |
 | App version | `project(VERSION)` in `CMakeLists.txt` (shared by `getApplicationVersion` and EXE metadata) |
-| Polyphony | 16 voices |
-| Audio | Stereo out (0 in / 2 out), MIDI in; on Windows **WASAPI** is the default via JUCE |
+| Polyphony   | 16 voices                                                                                   |
+| Audio       | Stereo out (0 in / 2 out), MIDI in; on Windows **WASAPI** is the default via JUCE           |
 
 The app runs on two paths: **UI thread** and **audio thread**. Parameters are shared through
 `std::atomic` fields in `SynthParameters` for lock-free reads and writes.
@@ -47,12 +47,12 @@ The app runs on two paths: **UI thread** and **audio thread**. Parameters are sh
 └───────────────┘   └───────────────┘   └───────────────┘
 ```
 
-| Layer | Responsibility |
-| ----- | -------------- |
-| **Application** | Window, audio/MIDI device wiring, lifecycle |
-| **UI** | Controls, user input → parameter writes |
-| **State** | Parameters, presets, session JSON, playhead data for UI |
-| **Audio** | Sample generation, envelopes, filter, LFO |
+| Layer           | Responsibility                                          |
+| --------------- | ------------------------------------------------------- |
+| **Application** | Window, audio/MIDI device wiring, lifecycle             |
+| **UI**          | Controls, user input → parameter writes                 |
+| **State**       | Parameters, presets, session JSON, playhead data for UI |
+| **Audio**       | Sample generation, envelopes, filter, LFO               |
 
 ---
 
@@ -102,11 +102,12 @@ flowchart TB
 
 ### `Main.cpp`
 
-- **`AnalogSynthApplication`** — app startup/shutdown
-- **`MainComponent`** — main UI and audio
+- `**AnalogSynthApplication**` — app startup/shutdown
+- `**MainComponent**` — main UI and audio
   - `juce::AudioAppComponent` — audio I/O
   - `juce::MidiInputCallback` — external MIDI
-  - PC keyboard **ON/OFF**, `PcKeyboardDisplay`, `TrebleStaffDisplay`, `DiffShortcutKeyListener` (Space → DIFF)
+  - PC keyboard **ON/OFF**, `PcKeyboardDisplay`, `TrebleStaffDisplay`, `TransposeControl`,
+    `DiffShortcutKeyListener` (Space → DIFF)
 
 ### Audio block (`getNextAudioBlock`)
 
@@ -114,9 +115,10 @@ flowchart TB
 2. `GlobalLfo::prepareForBlock` — precompute LFO1/LFO2 sine per block
 3. MIDI from `MidiMessageCollector`
 4. Merge on-screen keyboard MIDI via `MidiKeyboardState`
-5. In MONO mode, `applyMonoNoteStealing` inserts Note Offs for other notes
-6. `juce::Synthesiser::renderNextBlock` — mix all voices
-7. Apply master gain via `SynthParameters::getMasterLevel`
+5. `applyTransposeToMidiBuffer` — apply `TransposeControl` semitone offset to Note On/Off
+6. In MONO mode, `applyMonoNoteStealing` inserts Note Offs for other notes
+7. `juce::Synthesiser::renderNextBlock` — mix all voices
+8. Apply master gain via `SynthParameters::getMasterLevel`
 
 ### MIDI input
 
@@ -128,7 +130,7 @@ flowchart TB
 ## Windows audio (ASIO / WASAPI)
 
 NEXUS OSC connects to OS audio devices through **JUCE `AudioAppComponent`**.
-The app does not call WASAPI/ASIO directly; JUCE **`AudioDeviceManager`** abstracts backends.
+The app does not call WASAPI/ASIO directly; JUCE `**AudioDeviceManager**` abstracts backends.
 
 ### Connection in this project
 
@@ -176,13 +178,13 @@ each launch uses JUCE defaults.
 
 Backends enabled at compile time in `juce_audio_devices` (default build):
 
-| Mode | JUCE flag | This project | Example UI name | Notes |
-| ---- | --------- | ------------ | ----------------- | ----- |
-| **WASAPI (shared)** | `JUCE_WASAPI = 1` | **enabled, default** | `Windows Audio` | Standard API; shared device; higher latency |
-| **WASAPI (exclusive)** | `JUCE_WASAPI = 1` | enabled | `Windows Audio (Exclusive Mode)` | Exclusive device; lower latency |
-| **WASAPI (low latency shared)** | `JUCE_WASAPI = 1` | enabled | `Windows Audio (Low Latency Mode)` | Win10+ low-latency shared |
-| **DirectSound** | `JUCE_DIRECTSOUND = 1` | enabled (fallback) | `DirectSound` | Legacy; WASAPI preferred |
-| **ASIO** | `JUCE_ASIO = 0` | **disabled** | `ASIO` | Needs Steinberg ASIO SDK |
+| Mode                            | JUCE flag              | This project         | Example UI name                    | Notes                                       |
+| ------------------------------- | ---------------------- | -------------------- | ---------------------------------- | ------------------------------------------- |
+| **WASAPI (shared)**             | `JUCE_WASAPI = 1`      | **enabled, default** | `Windows Audio`                    | Standard API; shared device; higher latency |
+| **WASAPI (exclusive)**          | `JUCE_WASAPI = 1`      | enabled              | `Windows Audio (Exclusive Mode)`   | Exclusive device; lower latency             |
+| **WASAPI (low latency shared)** | `JUCE_WASAPI = 1`      | enabled              | `Windows Audio (Low Latency Mode)` | Win10+ low-latency shared                   |
+| **DirectSound**                 | `JUCE_DIRECTSOUND = 1` | enabled (fallback)   | `DirectSound`                      | Legacy; WASAPI preferred                    |
+| **ASIO**                        | `JUCE_ASIO = 0`        | **disabled**         | `ASIO`                             | Needs Steinberg ASIO SDK                    |
 
 `AudioDeviceManager::createAudioDeviceTypes` order:
 **WASAPI (shared → exclusive → low latency) → DirectSound → ASIO**.
@@ -190,12 +192,12 @@ The first type with a device is chosen; usually **WASAPI shared** at startup.
 
 ### When to use which (rough guide)
 
-| Use case | Suggestion |
-| -------- | ---------- |
-| Casual listening | WASAPI shared (current default) |
-| Lower latency on same PC | WASAPI exclusive / low-latency shared |
-| Audio interface + DAW-level latency | ASIO (requires SDK) |
-| Legacy / troubleshooting | DirectSound |
+| Use case                            | Suggestion                            |
+| ----------------------------------- | ------------------------------------- |
+| Casual listening                    | WASAPI shared (current default)       |
+| Lower latency on same PC            | WASAPI exclusive / low-latency shared |
+| Audio interface + DAW-level latency | ASIO (requires SDK)                   |
+| Legacy / troubleshooting            | DirectSound                           |
 
 ### Enabling ASIO (future / developers)
 
@@ -210,12 +212,12 @@ Until then, output on Windows is via **WASAPI or DirectSound**.
 
 ### Related code
 
-| File / API | Role |
-| ---------- | ---- |
-| `Main.cpp` — `setAudioChannels(0, 2)` | Output channel count |
-| `Main.cpp` — `prepareToPlay` / `getNextAudioBlock` | Audio processing |
-| `juce::AudioAppComponent` | Wraps `AudioDeviceManager` + `AudioSourcePlayer` |
-| `juce_audio_devices` (JUCE) | WASAPI / DirectSound / ASIO implementations |
+| File / API                                         | Role                                             |
+| -------------------------------------------------- | ------------------------------------------------ |
+| `Main.cpp` — `setAudioChannels(0, 2)`              | Output channel count                             |
+| `Main.cpp` — `prepareToPlay` / `getNextAudioBlock` | Audio processing                                 |
+| `juce::AudioAppComponent`                          | Wraps `AudioDeviceManager` + `AudioSourcePlayer` |
+| `juce_audio_devices` (JUCE)                        | WASAPI / DirectSound / ASIO implementations      |
 
 ---
 
@@ -263,12 +265,12 @@ Master gain is applied after all voices in `MainComponent::getNextAudioBlock`.
 
 ### Oscillators (`SynthVoice::mixOscillators`)
 
-| Source | Content |
-| ------ | ------- |
-| OSC1 | `Waveform` (Sine / Saw / Square / Triangle) |
-| OSC2 | Independent waveform + DET2 (±100 cent). Omitted from mix when `osc2Enabled` is false |
-| Sub | OSC1 waveform at -1 / -2 octave |
-| Noise | White noise |
+| Source | Content                                                                               |
+| ------ | ------------------------------------------------------------------------------------- |
+| OSC1   | `Waveform` (Sine / Saw / Square / Triangle)                                           |
+| OSC2   | Independent waveform + DET2 (±100 cent). Omitted from mix when `osc2Enabled` is false |
+| Sub    | OSC1 waveform at -1 / -2 octave                                                       |
+| Noise  | White noise                                                                           |
 
 Tuning: TUNE (±12 semitones), FINE (±100 cent) on MIDI note frequency.
 
@@ -279,7 +281,7 @@ Tuning: TUNE (±12 semitones), FINE (±100 cent) on MIDI note frequency.
 
 ### Envelopes
 
-- **`AdsrEnvelope`** — Attack / Decay / Sustain / Release (linear ADSR)
+- `**AdsrEnvelope`** — Attack / Decay / Sustain / Release (linear ADSR)
 - Per-voice Amp EG and Filter EG
 - Stages via `noteOn` / `noteOff` / `advance`
 
@@ -290,10 +292,10 @@ Tuning: TUNE (±12 semitones), FINE (±100 cent) on MIDI note frequency.
 - `prepareForBlock` at block start; `valueAt(index, sampleIndex)` per sample
 - `getLedLevel(index)` drives `LfoRateLed` at 60 fps
 
-| Stage | Parameters (`SynthParameters`) | Defaults |
-| ----- | ------------------------------ | -------- |
-| LFO1 | `lfoRateHz`, `lfoDepth`, `lfoToPitch/Filter/Amp` | 4 Hz / 0.3 / Filter ON |
-| LFO2 | `lfo2RateHz`, `lfo2Depth`, `lfo2ToPitch/Filter/Amp` | 0.8 Hz / 0.0 / all OFF |
+| Stage | Parameters (`SynthParameters`)                      | Defaults               |
+| ----- | --------------------------------------------------- | ---------------------- |
+| LFO1  | `lfoRateHz`, `lfoDepth`, `lfoToPitch/Filter/Amp`    | 4 Hz / 0.3 / Filter ON |
+| LFO2  | `lfo2RateHz`, `lfo2Depth`, `lfo2ToPitch/Filter/Amp` | 0.8 Hz / 0.0 / all OFF |
 
 Other defaults (excerpt): Cutoff **6000 Hz**, Resonance **0.707**, OSC1 **Saw**, OSC2 **Square**
 (level 0), Master **0.85**, Filter ENV amount **0.5**.
@@ -302,16 +304,16 @@ Other defaults (excerpt): Cutoff **6000 Hz**, Resonance **0.707**, OSC1 **Saw**,
 
 ## Parameter model (`SynthParameters`)
 
-**Static atomic fields** (singleton-style). UI uses `set*`, audio uses `get*`.
+**Static atomic fields** (singleton-style). UI uses `set`*, audio uses `get*`.
 
-| Category | Main parameters |
-| -------- | ----------------- |
-| OSC | Waveforms ×2, `osc2Enabled`, levels, TUNE/FINE, DET2 |
-| MIXER | Sub / Noise, Glide, V→A / V→F |
-| FILTER | Cutoff, Resonance, ENV amount, Key Track, Filter EG |
-| AMP | Amp EG (A/D/S/R) |
-| LFO | LFO1/LFO2: Rate, Depth, Pitch / Filter / Amp routing |
-| PERF | Mono, Master |
+| Category | Main parameters                                      |
+| -------- | ---------------------------------------------------- |
+| OSC      | Waveforms ×2, `osc2Enabled`, levels, TUNE/FINE, DET2 |
+| MIXER    | Sub / Noise, Glide, V→A / V→F                        |
+| FILTER   | Cutoff, Resonance, ENV amount, Key Track, Filter EG  |
+| AMP      | Amp EG (A/D/S/R)                                     |
+| LFO      | LFO1/LFO2: Rate, Depth, Pitch / Filter / Amp routing |
+| PERF     | Mono, Master                                         |
 
 **Rationale**: No `AudioProcessorValueTreeState`; lightweight atomics for Standalone simplicity.
 
@@ -354,57 +356,80 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
 
 ## UI architecture (`SynthEditor` + `Source/UI/`)
 
-`MainComponent` = compact header (title + subtitle, **28px** tall) + `SynthEditor` + bottom **keyboard row**. The keyboard row (**96px** tall), left to right: **on-screen keyboard** (`MidiKeyboardComponent`, MIDI 36–96) → **treble staff** (`TrebleStaffDisplay`, **162px** wide) → **PC keyboard strip** (**ON / OFF** + `PcKeyboardDisplay`, **188px** wide). Initial window **1080×680**; restores bounds from last session when available. PC strip breakdown: **38px** toggles + ~**150px** diagram.
+`MainComponent` = compact header (title + subtitle, **28px** tall) + `SynthEditor` + bottom **keyboard row**.
+
+The keyboard row (**96px** tall), left to right:
+
+1. **On-screen keyboard** — `MidiKeyboardComponent`, MIDI 36–96, white-key width 18px, required width **648px**,
+   scroll buttons hidden
+2. **Treble staff** — `TrebleStaffDisplay`, **remaining width** (about **142px** at 1080px window width)
+3. **Transpose** — `TransposeControl`, **74px** wide
+4. **PC keyboard strip** — **ON / OFF** + `PcKeyboardDisplay`, **188px** wide ( **38px** toggles + ~**150px** diagram)
+
+Initial window **1080×680**; restores bounds from last session when available.
 
 ### Master row (top of `SynthEditor`)
 
-| Control | Function |
-| ------- | -------- |
-| **ALL OFF** | Immediate silence (`onPanic` → `stopAllSound`) |
-| **MONO** | Monophonic note stealing |
-| **PRESET** | Preset select (built-in + user) |
+| Control                | Function                                                         |
+| ---------------------- | ---------------------------------------------------------------- |
+| **ALL OFF**            | Immediate silence (`onPanic` → `stopAllSound`)                   |
+| **MONO**               | Monophonic note stealing                                         |
+| **PRESET**             | Preset select (built-in + user)                                  |
 | **SAVE** / **SAVE AS** | Overwrite loaded user preset / save as new (enabled after edits) |
-| **LOAD** / **RESET** | Load JSON file / factory reset (INIT) |
-| **DIFF** | A/B compare against baseline tone (Space key toggles) |
-| **MASTER** | Output level (**%** display, 0–1 internally) |
+| **LOAD** / **RESET**   | Load JSON file / factory reset (INIT)                            |
+| **DIFF**               | A/B compare against baseline tone (Space key toggles)            |
+| **MASTER**             | Output level (**%** display, 0–1 internally)                     |
 
 ### Module panels
 
-| Panel | Content |
-| ----- | ------- |
-| OSC | OSC1/OSC2 four waveforms each (OSC2 toggles off on re-click), TUNE/FINE/DET2 (with RESET) |
-| MIXER | OSC1/OSC2/SUB/NOISE levels, Sub octave (`SubOctGroupFrame`), Glide, V-A/V-F |
-| FILTER | CUT/RES/ENV/KEY, Filter EG graph + FA–FR |
-| AMP | Amp EG graph + A/D/S/R |
-| LFO | LFO1/LFO2 (RATE/DEPTH, PITCH/FILTER/AMP routing, RATE LED) |
+| Panel  | Content                                                                                   |
+| ------ | ----------------------------------------------------------------------------------------- |
+| OSC    | OSC1/OSC2 four waveforms each (OSC2 toggles off on re-click), TUNE/FINE/DET2 (with RESET) |
+| MIXER  | OSC1/OSC2/SUB/NOISE levels, Sub octave (`SubOctGroupFrame`), Glide, V-A/V-F               |
+| FILTER | CUT/RES/ENV/KEY, Filter EG graph + FA–FR                                                  |
+| AMP    | Amp EG graph + A/D/S/R                                                                    |
+| LFO    | LFO1/LFO2 (RATE/DEPTH, PITCH/FILTER/AMP routing, RATE LED)                                |
 
 ### SYSTEM footer
 
-| Control | Function |
-| ------- | -------- |
+| Control     | Function                                  |
+| ----------- | ----------------------------------------- |
 | **MIDI IN** | Input device (`All Inputs` or one device) |
-| Status line | MIDI status or hover help text |
+| Status line | MIDI status or hover help text            |
 
 ### Custom UI components
 
-| File | Role |
-| ---- | ---- |
-| `ModulePanel` | Module frame + `contentBounds()` |
-| `FuturisticLookAndFeel` | Knob/slider look |
-| `SynthTheme` | Colors, fonts, decoration helpers |
-| `WaveformButton` | OSC waveform select (disables DET2 / OSC2 level when OSC2 off) |
-| `SubOctGroupFrame` | Corner-bracket frame for SUB octave buttons |
-| `AdsrDisplay` | ADSR curve + playheads |
-| `LfoRateLed` | LFO phase LED (`GlobalLfo::Index` for LFO1/LFO2) |
-| `PcKeyboardDisplay` | PC key layout diagram (press highlight; click restores play focus) |
-| `TrebleStaffDisplay` | Treble-clef staff (live pitch-class display, ♯/♭ spelling toggle) |
+| File                    | Role                                                               |
+| ----------------------- | ------------------------------------------------------------------ |
+| `ModulePanel`           | Module frame + `contentBounds()`                                   |
+| `FuturisticLookAndFeel` | Knob/slider look                                                   |
+| `SynthTheme`            | Colors, fonts, decoration helpers                                  |
+| `WaveformButton`        | OSC waveform select (disables DET2 / OSC2 level when OSC2 off)     |
+| `SubOctGroupFrame`      | Corner-bracket frame for SUB octave buttons                        |
+| `AdsrDisplay`           | ADSR curve + playheads                                             |
+| `LfoRateLed`            | LFO phase LED (`GlobalLfo::Index` for LFO1/LFO2)                   |
+| `PcKeyboardDisplay`     | PC key layout diagram (press highlight; click restores play focus) |
+| `TrebleStaffDisplay`    | Treble-clef staff (live pitch-class display, ♯/♭ spelling toggle)  |
+| `TransposeControl`      | Transpose UI (♭/♮/♯ + letter combo, semitone offset table)         |
+
+### Transpose (`TransposeControl` + `Main.cpp`)
+
+- **UI**: top row ♭/♮/♯ (radio 9103, default ♮), bottom combo F–G (default C). LookAndFeel: `transposeCombo` / `staffAccidentalToggle`
+- **Offset**: `getTransposeSemitoneOffset` ← `kTransposeTable[7][3]` (`TransposeControl.cpp`). C♮=0, G♭=−6, etc.
+- **Application**: `applyTransposeToMidiBuffer` — after merging virtual keyboard and external MIDI,
+  before synth render. Clamps Note On/Off to 0–127
+- **On change**: `onTransposeChanged` → `stopAllSound()`
+- **MONO legato**: adds offset to held note for `legatoNoteOn`
+- **Persistence**: not stored in session JSON
 
 ### Treble staff (`TrebleStaffDisplay` + `Main.cpp`)
 
-- **Placement**: keyboard row, right of the on-screen keyboard, left of the PC key strip (`kTrebleStaffWidth = 162`)
+- **Placement**: keyboard row, right of the on-screen keyboard, left of the transpose panel
+  (width = remaining keyboard-row width − `requiredKeyboardPixelWidth()`)
 - **Data**: `getActiveNotes` callback ← `collectActiveMidiNotes()` (MIDI notes from sounding `SynthVoice` instances)
 - **Refresh**: 30 Hz `Timer` → `repaint`
-- **Font**: `Resources/Bravura.otf` embedded via `juce_add_binary_data(AnalogSynthFonts)`. Clef and accidentals drawn as Bravura SMuFL glyph paths
+- **Font**: `Resources/Bravura.otf` embedded via `juce_add_binary_data(AnalogSynthFonts)`.
+  Clef and accidentals drawn as Bravura SMuFL glyph paths
 - **♯/♭ toggle**: two left `TextButton`s (radio group 9102, default ♭). Labels drawn by `FuturisticLookAndFeel` (`staffAccidentalToggle`)
 - **Note logic** (`TrebleStaffDisplay.cpp`):
   - Extract pitch classes from active notes, sort, dedupe
@@ -413,13 +438,14 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub (atomic)
   - Line vs space noteheads stagger horizontally (`kNoteHeadStaggerRatio`, extra `kSpaceNoteExtraOffsetX` for spaces)
   - Multiple accidentals sorted in key-signature order (♯ F→C→G→… / ♭ B→E→A→…) and staggered left-to-right (`assignAccidentalColumnRights`)
   - Middle-C ledger line always shown (`kMiddleCLedgerHalfWidth`)
+  - ♯/♭ toggles, noteheads, and accidentals offset right by `kNoteDisplayOffsetX` (5px)
 
 ```text
 Keyboard row (left → right)
-┌──────────────────────────┬─────────────┬──────────────────┐
-│ MidiKeyboardComponent    │ TrebleStaff │ ON/OFF + PcKeyboard│
-│ (mouse play)             │ Display     │ Display          │
-└──────────────────────────┴─────────────┴──────────────────┘
+┌──────────────────────────┬─────────────┬──────────┬──────────────────┐
+│ MidiKeyboardComponent    │ TrebleStaff │ Transpose│ ON/OFF + PcKeyboard│
+│ (mouse play)             │ Display     │ Control  │ Display          │
+└──────────────────────────┴─────────────┴──────────┴──────────────────┘
 ```
 
 ### PC keyboard play (`Main.cpp` + `PcKeyboardDisplay`)
@@ -430,8 +456,10 @@ Keyboard row (left → right)
 - **Focus**: `MidiKeyboardComponent::keyStateChanged` only runs when that component has keyboard focus
   - `requestPcKeyboardFocus()` — double `callAsync` then `grabKeyboardFocus`
   - Called after `MainWindow` `setVisible`, on **ON**, and when clicking the PC key diagram
-- **`PcKeyboardDisplay`**: 30 Hz timer polls `KeyPress::isKeyCurrentlyDown` for highlights (no focus needed). `onClicked` → `requestPcKeyboardFocus`
-- **DIFF shortcut**: **Space** via `DiffShortcutKeyListener` (registered on `MainComponent`, virtual keyboard, `SynthEditor`, `MainWindow`). Does not conflict with ASDF play keys
+- **`PcKeyboardDisplay`**: 30 Hz timer polls `KeyPress::isKeyCurrentlyDown` for highlights (no focus needed).
+  `onClicked` → `requestPcKeyboardFocus`
+- **DIFF shortcut**: **Space** via `DiffShortcutKeyListener` (registered on `MainComponent`, virtual keyboard,
+  `SynthEditor`, `MainWindow`). Does not conflict with ASDF play keys
 
 ### Help
 
@@ -466,8 +494,8 @@ MIXER/LFO labels use one full-width line; RATE LEDs sit below the RATE label.
 
 - **Built-in (Factory)**: INIT / PAD / BASS / LEAD defined in code
 - **User**: `%APPDATA%/NEXUS OSC/Presets/*.json` (`PresetManager::getUserPresetsDirectory`)
-- JSON: LFO1 uses `lfoRateHz`, etc.; LFO2 uses `lfo2RateHz` / `lfo2Depth` / `lfo2To*`;
-  OSC2 includes `osc2Enabled` (missing key defaults to true)
+- JSON: LFO1 uses `lfoRateHz`, etc.; LFO2 uses `lfo2RateHz` / `lfo2Depth` / `lfo2To`*;
+OSC2 includes `osc2Enabled` (missing key defaults to true)
 - `captureCurrentParameters` / `applyParametersFromVar` ↔ `SynthParameters`
 - **Dirty detection**: compares `baselineJson` to current state (`isCurrentPresetDirty`)
   - Edited factory preset: **SAVE AS** only
@@ -478,12 +506,12 @@ MIXER/LFO labels use one full-width line; RATE LEDs sit below the RATE label.
 
 ## Session persistence (`AppState`)
 
-| Item | Details |
-| ---- | ------- |
-| File | `%APPDATA%/NEXUS OSC/session.json` |
-| Save | On quit (`MainWindow::persistSession` → `AppState::save`) |
+| Item     | Details                                                                            |
+| -------- | ---------------------------------------------------------------------------------- |
+| File     | `%APPDATA%/NEXUS OSC/session.json`                                                 |
+| Save     | On quit (`MainWindow::persistSession` → `AppState::save`)                          |
 | Contents | Full parameter JSON, preset index, MIDI IN (All Inputs / device ID), window bounds |
-| Restore | `AppState::load` → `MainComponent::restoreSession` on launch |
+| Restore  | `AppState::load` → `MainComponent::restoreSession` on launch                       |
 
 ---
 
@@ -509,7 +537,7 @@ analog_synth/
 │       ├── nexus-osc-ui.png
 │       └── playing.png
 └── Source/
-    ├── Main.cpp            # app / audio / MIDI / DIFF / PC keyboard / treble staff
+    ├── Main.cpp            # app / audio / MIDI / transpose / DIFF / PC keyboard / treble staff
     ├── AppState.*          # session JSON
     ├── SynthEditor.*
     ├── SynthVoice.*
@@ -529,7 +557,9 @@ analog_synth/
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
         ├── PcKeyboardDisplay.*
+        ├── PcKeyboardDisplay.*
         ├── TrebleStaffDisplay.*
+        ├── TransposeControl.*
         └── SynthTheme.h
 ```
 
@@ -537,12 +567,12 @@ analog_synth/
 
 ## Thread safety
 
-| Data | Mechanism |
-| ---- | --------- |
-| Synth parameters | `std::atomic` + `memory_order_relaxed` |
-| Playhead positions | atomics inside `EnvelopePlayheadHub` |
-| LFO LED levels | `GlobalLfo::State::ledLevel` (per LFO, atomic) |
-| MIDI | `MidiMessageCollector` (JUCE thread-safe queue) |
+| Data               | Mechanism                                       |
+| ------------------ | ----------------------------------------------- |
+| Synth parameters   | `std::atomic` + `memory_order_relaxed`          |
+| Playhead positions | atomics inside `EnvelopePlayheadHub`            |
+| LFO LED levels     | `GlobalLfo::State::ledLevel` (per LFO, atomic)  |
+| MIDI               | `MidiMessageCollector` (JUCE thread-safe queue) |
 
 The UI does not touch audio objects directly; only atomic parameter writes.
 
@@ -566,12 +596,12 @@ MSVC: `/utf-8` for UTF-8 source.
 Explorer uses **resource ID 1** for the `.exe` file icon. JUCE’s default `IDI_ICON1` string
 name alone may not show in Explorer, so we embed `AppPrimaryIcon.rc` explicitly.
 
-| File | Role |
-| ---- | ---- |
-| `Resources/Icons/app_icon.png` | 512×512 source (yellow-green `#adff2f` + black **Nex**) |
-| `Resources/Icons/generate_app_icon.py` | Regenerate PNG |
-| `Resources/Icons/AppPrimaryIcon.rc` | `1 ICON DISCARDABLE "icon.ico"` |
-| Build output `icon.ico` | Generated by `juceaide winicon` from PNG (16/32/48/256 px) |
+| File                                   | Role                                                       |
+| -------------------------------------- | ---------------------------------------------------------- |
+| `Resources/Icons/app_icon.png`         | 512×512 source (yellow-green `#adff2f` + black **Nex**)    |
+| `Resources/Icons/generate_app_icon.py` | Regenerate PNG                                             |
+| `Resources/Icons/AppPrimaryIcon.rc`    | `1 ICON DISCARDABLE "icon.ico"`                            |
+| Build output `icon.ico`                | Generated by `juceaide winicon` from PNG (16/32/48/256 px) |
 
 ---
 
@@ -579,14 +609,14 @@ name alone may not show in Explorer, so we embed `AppPrimaryIcon.rc` explicitly.
 
 **Standalone only** for now. Not implemented or planned:
 
-| Area | Content |
-| ---- | ------- |
-| Plugin | VST3 / CLAP (`AudioProcessor` migration) |
-| FX | Chorus / delay / reverb |
-| Performance | Pitch bend, mod wheel |
-| DSP | **SmoothedValue** (smooth knob targets; atomics today), effective cutoff Hz display |
-| Other | Arpeggiator, MPE, voice-count display |
-| Audio UI | Device/buffer picker (`AudioDeviceSelectorComponent`) |
+| Area        | Content                                                                             |
+| ----------- | ----------------------------------------------------------------------------------- |
+| Plugin      | VST3 / CLAP (`AudioProcessor` migration)                                            |
+| FX          | Chorus / delay / reverb                                                             |
+| Performance | Pitch bend, mod wheel                                                               |
+| DSP         | **SmoothedValue** (smooth knob targets; atomics today), effective cutoff Hz display |
+| Other       | Arpeggiator, MPE, voice-count display                                               |
+| Audio UI    | Device/buffer picker (`AudioDeviceSelectorComponent`)                               |
 
 A natural plugin path: move audio/MIDI from `MainComponent` to `juce::AudioProcessor` and
 replace `SynthParameters` with `APVTS` or an equivalent parameter bus.
@@ -595,19 +625,20 @@ replace `SynthParameters` with `APVTS` or an equivalent parameter bus.
 
 ## File quick reference
 
-| Task | Files |
-| ---- | ----- |
-| Sound / DSP | `SynthVoice.cpp`, `AdsrEnvelope.h`, `Waveform.h`, `GlobalLfo.h` |
-| LFO changes | `GlobalLfo.h`, `SynthParameters.h`, `SynthEditor.cpp` |
-| New parameters | `SynthParameters.h`, `SynthEditor.cpp`, `PresetManager.cpp` |
-| UI layout | `SynthEditor.cpp` (`layout*`) |
-| Theme / look | `UI/SynthTheme.h`, `FuturisticLookAndFeel.*` |
-| EG graphs | `UI/AdsrDisplay.*`, `EnvelopePlayhead.*` |
-| Preset format / dirty state | `PresetManager.cpp` |
-| Session JSON | `AppState.cpp` |
-| DIFF / baseline | `Main.cpp` |
-| PC keyboard (ASDF) | `Main.cpp`, `UI/PcKeyboardDisplay.*` |
-| Treble staff | `UI/TrebleStaffDisplay.*`, `Main.cpp` (`collectActiveMidiNotes`), `Resources/Bravura.otf` |
-| OSC2 toggle | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp` |
-| MIDI / audio I/O | `Main.cpp`, `AudioAppComponent` / `AudioDeviceManager` |
-| Windows icon | `CMakeLists.txt`, `Resources/Icons/*` |
+| Task                        | Files                                                                                     |
+| --------------------------- | ----------------------------------------------------------------------------------------- |
+| Sound / DSP                 | `SynthVoice.cpp`, `AdsrEnvelope.h`, `Waveform.h`, `GlobalLfo.h`                           |
+| LFO changes                 | `GlobalLfo.h`, `SynthParameters.h`, `SynthEditor.cpp`                                     |
+| New parameters              | `SynthParameters.h`, `SynthEditor.cpp`, `PresetManager.cpp`                               |
+| UI layout                   | `SynthEditor.cpp` (`layout`*)                                                             |
+| Theme / look                | `UI/SynthTheme.h`, `FuturisticLookAndFeel.*`                                              |
+| EG graphs                   | `UI/AdsrDisplay.*`, `EnvelopePlayhead.*`                                                  |
+| Preset format / dirty state | `PresetManager.cpp`                                                                       |
+| Session JSON                | `AppState.cpp`                                                                            |
+| DIFF / baseline             | `Main.cpp`                                                                                |
+| PC keyboard (ASDF)          | `Main.cpp`, `UI/PcKeyboardDisplay.*`                                                      |
+| Transpose                   | `UI/TransposeControl.*`, `Main.cpp` (`applyTransposeToMidiBuffer`)                        |
+| Treble staff                | `UI/TrebleStaffDisplay.*`, `Main.cpp` (`collectActiveMidiNotes`), `Resources/Bravura.otf` |
+| OSC2 toggle                 | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp`                                  |
+| MIDI / audio I/O            | `Main.cpp`, `AudioAppComponent` / `AudioDeviceManager`                                    |
+| Windows icon                | `CMakeLists.txt`, `Resources/Icons/*`                                                     |

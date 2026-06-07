@@ -10,7 +10,7 @@ Analog-style synthesizer for Windows (Standalone). Play via USB MIDI keyboard or
 
 ### Main UI
 
-![NEXUS OSC — main UI (1080×680)](docs/images/nexus-osc-ui.png)
+NEXUS OSC — main UI (1080×680)
 
 Window size: 1080×680
 
@@ -18,11 +18,12 @@ Top: presets, MONO, ALL OFF, SAVE / SAVE AS, LOAD, RESET, DIFF, MASTER
 
 Center: synth modules (compact header + five panels)
 
-Bottom: on-screen keyboard (mouse) + **treble staff** (live pitch display) + PC keyboard diagram (ASDF play) with **ON / OFF** on the right
+Bottom: on-screen keyboard (mouse) + **treble staff** (live pitch display) + **transpose**
+(♭/♮/♯ + letter) + PC keyboard diagram (ASDF play) with **ON / OFF** on the right
 
 ### While playing
 
-![NEXUS OSC — playing](docs/images/playing.png)
+NEXUS OSC — playing
 
 Pressed keys light up on the on-screen keyboard
 
@@ -34,20 +35,21 @@ Playhead dots on the FILTER and AMPLIFIER EG graphs
 
 ## Features
 
-| Category | Description |
-| -------- | ----------- |
-| Oscillators | OSC1 / OSC2 (4 waveforms; click OSC2 again to turn off), Sub (-1 / -2 oct), TUNE / FINE / DET2 |
-| Mixer | OSC1 / OSC2 / SUB / NOISE levels, Glide, V-A / V-F (OSC2 / DET2 disabled when OSC2 is off) |
-| Filter | Low-pass (CUT / RES / ENV / KEY), Filter EG graph |
-| Amp | Amp ADSR graph |
-| LFO | LFO1 / LFO2 (RATE / DEPTH, Pitch / Filter / Amp, RATE-synced LEDs) |
-| Performance | 16 voices, MONO, ALL OFF. On-screen keyboard (mouse), **PC keyboard (ASDF etc.)**, external MIDI |
-| Treble staff | **Treble-clef staff** (`TrebleStaffDisplay`) between the on-screen keyboard and PC key diagram. Shows sounding pitch classes in real time. **♯ / ♭** spelling toggle on the left (default ♭) |
-| Presets | 4 built-in + user presets. SAVE (overwrite), SAVE AS, LOAD, RESET |
-| Compare | **DIFF** — A/B against tone at launch or last RESET / LOAD (Space key toggles) |
-| Session | On quit, saves tone, preset, MIDI, and window bounds under `%APPDATA%` |
-| Help | Japanese tooltips on hover (SYSTEM footer, 14pt) |
-| Icon | Windows exe: **Nex** on yellow-green (`Resources/Icons/`) |
+| Category     | Description                                                                                                                                                        |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Oscillators  | OSC1 / OSC2 (4 waveforms; click OSC2 again to turn off), Sub (-1 / -2 oct), TUNE / FINE / DET2                                                                     |
+| Mixer        | OSC1 / OSC2 / SUB / NOISE levels, Glide, V-A / V-F (OSC2 / DET2 disabled when OSC2 is off)                                                                         |
+| Filter       | Low-pass (CUT / RES / ENV / KEY), Filter EG graph                                                                                                                  |
+| Amp          | Amp ADSR graph                                                                                                                                                     |
+| LFO          | LFO1 / LFO2 (RATE / DEPTH, Pitch / Filter / Amp, RATE-synced LEDs)                                                                                                 |
+| Performance  | 16 voices, MONO, ALL OFF. On-screen keyboard (mouse), **PC keyboard (ASDF etc.)**, external MIDI                                                                   |
+| Transpose    | **Transpose** panel. Top row **♭ / ♮ / ♯** (default ♮), letter combo F–G (default **C**). Applies a semitone offset to all play input; changing it stops all notes |
+| Treble staff | **Treble-clef staff**. Shows sounding pitch classes in real time. **♯ / ♭** spelling toggle on the left (default ♭)                                                |
+| Presets      | 4 built-in + user presets. SAVE (overwrite), SAVE AS, LOAD, RESET                                                                                                  |
+| Compare      | **DIFF** — A/B against tone at launch or last RESET / LOAD (Space key toggles)                                                                                     |
+| Session      | On quit, saves tone, preset, MIDI, and window bounds under `%APPDATA%`                                                                                             |
+| Help         | Japanese tooltips on hover (SYSTEM footer, 14pt)                                                                                                                   |
+| Icon         | Windows exe: **Nex** on yellow-green (`Resources/Icons/`)                                                                                                          |
 
 **Not implemented (planned)**: VST3 / CLAP, FX (chorus / delay / reverb), pitch bend / mod wheel,
 ASIO enablement, SmoothedValue / effective cutoff Hz display, arpeggiator / MPE / voice-count UI,
@@ -80,7 +82,7 @@ The ZIP contains `AnalogSynth.exe` and `LICENSE`. Your last session is stored in
 ### Build from source
 
 - Everything above, plus [Visual Studio 2019 or later](https://visualstudio.microsoft.com/)
-  (“Desktop development with C++” workload)
+(“Desktop development with C++” workload)
 - **CMake**: 3.22 or newer
 - **Git**: fetches JUCE 8.0.6 via FetchContent
 
@@ -118,16 +120,16 @@ When you push a **version tag** to GitHub, **GitHub Actions** on GitHub’s serv
 
 ### Where it runs
 
-| Action | Where |
-| ------ | ----- |
-| Edit source, `git commit`, `git push` | Your PC |
+| Action                                           | Where                                        |
+| ------------------------------------------------ | -------------------------------------------- |
+| Edit source, `git commit`, `git push`            | Your PC                                      |
 | Release build, ZIP packaging, upload to Releases | **GitHub Actions** (`windows-latest` runner) |
 
 A local `cmake --build` does not update the Releases ZIP. A normal push to `main` alone does not either.
 
 ### Trigger
 
-[`.github/workflows/release.yml`](.github/workflows/release.yml) runs only when a `v*` tag is pushed (e.g. `v0.1.0`).
+`[.github/workflows/release.yml](.github/workflows/release.yml)` runs only when a `v`* tag is pushed (e.g. `v0.1.0`).
 
 ### What happens on the server
 
@@ -135,7 +137,7 @@ A local `cmake --build` does not update the Releases ZIP. A normal push to `main
 2. Configure and build Release with CMake (Visual Studio 2026, x64) on `windows-latest`
 3. Package `AnalogSynth.exe` and `LICENSE` into `NEXUS-OSC-Windows-x64-<tag>.zip`
 4. Attach the ZIP to [GitHub Releases](https://github.com/miyam1974/analog_synth/releases)
-   (creates the release page if needed)
+  (creates the release page if needed)
 
 ### Maintainer workflow (ship a new EXE)
 
@@ -148,7 +150,7 @@ A local `cmake --build` does not update the Releases ZIP. A normal push to `main
 - On GitHub **Actions**, confirm the `Release` workflow succeeded
 - On **Releases**, confirm the new ZIP is listed
 - In the Configure log, confirm `Visual Studio 18 2026`
-  (if you see `Ninja` or `Visual Studio 17 2022`, the tag may point at an old commit or you re-ran an old job)
+(if you see `Ninja` or `Visual Studio 17 2022`, the tag may point at an old commit or you re-ran an old job)
 
 To reuse a tag, delete the existing tag/release on GitHub first, then recreate the tag on the
 **latest `main` commit that includes the fixed workflow**.
@@ -166,27 +168,34 @@ After you push a new tag and Actions succeeds, a fresh EXE appears there.
 1. Connect a USB MIDI keyboard (optional)
 2. Run `AnalogSynth.exe` from a [download](#download) or [build](#build)
 3. Under **SYSTEM**, choose **MIDI IN** (`All Inputs` merges all devices)
-4. Tweak modules, then play from the on-screen keyboard, **PC keyboard (when ON)**, or external MIDI (the treble staff shows sounding pitches)
-5. **PC keyboard play**: use **ON / OFF** at the bottom-right (**ON** at launch). Click **ON** or the PC key diagram to give the virtual keyboard focus so ASDF keys sound (see table below). **OFF** clears PC key mappings
-6. Hover controls to see Japanese help in the SYSTEM footer
-7. **RESET** restores factory defaults (INIT). RESET / LOAD also refresh the **DIFF** comparison baseline
-8. After editing, use **DIFF** to switch against the baseline tone (while active, only ALL OFF / MASTER / MIDI IN / DIFF work). **Space** also toggles DIFF
-9. **SAVE AS** creates a user preset; **SAVE** overwrites the loaded user preset (enabled only after edits)
-10. On quit, synth settings, preset selection, MIDI input, and window layout are restored on next launch
+4. Tweak modules, then play from the on-screen keyboard, **PC keyboard (when ON)**, or external MIDI
+   (the treble staff shows sounding pitches)
+5. **Transpose**: use **♭ / ♮ / ♯** and the letter combo to the right of the staff (default **C♮**).
+   Applies to on-screen keys, PC keys, and external MIDI; changing it stops all sounding notes
+6. **PC keyboard play**: use **ON / OFF** at the bottom-right (**ON** at launch). Click **ON** or the PC key
+   diagram to give the virtual keyboard focus so ASDF keys sound (see table below). **OFF** clears PC key mappings
+7. Hover controls to see Japanese help in the SYSTEM footer
+8. **RESET** restores factory defaults (INIT). RESET / LOAD also refresh the **DIFF** comparison baseline
+9. After editing, use **DIFF** to switch against the baseline tone (while active, only ALL OFF / MASTER /
+   MIDI IN / DIFF work). **Space** also toggles DIFF
+10. **SAVE AS** creates a user preset; **SAVE** overwrites the loaded user preset (enabled only after edits)
+11. On quit, synth settings, preset selection, MIDI input, and window layout are restored on next launch
+    (**transpose is not saved**)
 
 ### PC keyboard (ASDF) layout
 
 When **ON**, PC keys play like the on-screen keyboard (JUCE default QWERTY mapping).
 
-| Upper row (sharps) | (gap) | S | D | (gap) | T | Y | U | (gap) | O | P |
-| ------------------ | ----- | - | - | ----- | - | - | - | ----- | - | - |
-| Physical keys | | W | E | | T | Y | U | | O | P |
-| Lower row (naturals) | A | S | D | F | G | H | J | K | L | + |
-| Physical keys | A | S | D | F | G | H | J | K | L | ; |
+| Upper row (sharps)   | (gap) | S   | D   | (gap) | T   | Y   | U   | (gap) | O   | P   |
+| -------------------- | ----- | --- | --- | ----- | --- | --- | --- | ----- | --- | --- |
+| Physical keys        |       | W   | E   |       | T   | Y   | U   |       | O   | P   |
+| Lower row (naturals) | A     | S   | D   | F     | G   | H   | J   | K     | L   | +   |
+| Physical keys        | A     | S   | D   | F     | G   | H   | J   | K     | L   | ;   |
 
 - Upper **S / D** labels map to physical **W / E** (black-key positions)
 - **+** is the **;** (semicolon) key
-- The diagram highlights pressed keys without needing focus; **sound** requires **ON** plus keyboard focus on the virtual keyboard component
+- The diagram highlights pressed keys without needing focus; **sound** requires **ON** plus keyboard focus
+  on the virtual keyboard component
 - If keys stop responding after editing, click **ON** or the PC key diagram again
 
 ### User preset location
@@ -244,7 +253,9 @@ analog_synth/
         ├── WaveformButton.*
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
+        ├── PcKeyboardDisplay.*
         ├── TrebleStaffDisplay.*
+        ├── TransposeControl.*
         └── SynthTheme.h
 ```
 
@@ -252,11 +263,11 @@ analog_synth/
 
 ## Documentation
 
-| File | Contents |
-| ---- | -------- |
-| [README.md](README.md) / [README.en.md](README.en.md) | Overview, build, usage |
+| File                                                                          | Contents                                               |
+| ----------------------------------------------------------------------------- | ------------------------------------------------------ |
+| [README.md](README.md) / [README.en.md](README.en.md)                         | Overview, build, usage                                 |
 | [ARCHITECTURE.md](ARCHITECTURE.md) / [ARCHITECTURE.en.md](ARCHITECTURE.en.md) | Design (layers, signal flow, WASAPI/ASIO, threads, UI) |
-| [SPEC.md](SPEC.md) | UI feature spec (on-screen controls) |
+| [SPEC.md](SPEC.md)                                                            | UI feature spec (on-screen controls)                   |
 
 For development, see **[ARCHITECTURE.en.md](ARCHITECTURE.en.md)**.
 
