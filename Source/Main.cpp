@@ -1,4 +1,7 @@
+#include <functional>
+#include <iterator>
 #include <memory>
+#include <string_view>
 #include <vector>
 
 #include <juce_audio_utils/juce_audio_utils.h>
@@ -11,13 +14,19 @@
 #include "SynthParameters.h"
 #include "SynthSound.h"
 #include "SynthVoice.h"
+#include "UI/FuturisticLookAndFeel.h"
+#include "UI/PcKeyboardDisplay.h"
 #include "UI/SynthTheme.h"
+#include "UI/TrebleStaffDisplay.h"
 
 namespace
 {
 constexpr int kNumVoices = 16;
 constexpr int kHeaderHeight = 28;
 constexpr int kKeyboardHeight = 96;
+constexpr int kKeyboardSidePanelWidth = 188;
+constexpr int kPcKeyboardToggleColumnWidth = 38;
+constexpr int kTrebleStaffWidth = 162;
 constexpr int kMargin = 14;
 constexpr int kDefaultWindowWidth = 1080;
 constexpr int kDefaultWindowHeight = 680;
@@ -56,13 +65,80 @@ void applyParametersKeepingMaster(const juce::var& parameters)
     PresetManager::applyParametersFromVar(parameters);
     SynthParameters::setMasterLevel(masterLevel);
 }
+
+void applyDefaultPcKeyMappings(juce::MidiKeyboardComponent& keyboard)
+{
+    keyboard.clearKeyMappings();
+
+    const std::string_view keys{"awsedftgyhujkolp;"};
+    for (const char& c : keys)
+        keyboard.setKeyPressForNote({c, 0, 0}, static_cast<int>(std::distance(keys.data(), &c)));
+}
+
+void setPcKeyboardMappingsEnabled(juce::MidiKeyboardComponent& keyboard, bool enabled)
+{
+    if (enabled)
+        applyDefaultPcKeyMappings(keyboard);
+    else
+        keyboard.clearKeyMappings();
+}
+
+class DiffShortcutKeyListener : public juce::KeyListener
+{
+public:
+    explicit DiffShortcutKeyListener(std::function<void()> onToggle)
+        : onToggle(std::move(onToggle))
+    {
+    }
+
+    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    {
+        if (!isDiffShortcut(key))
+            return false;
+
+        onToggle();
+        return true;
+    }
+
+private:
+    static bool isDiffShortcut(const juce::KeyPress& key)
+    {
+        if (juce::Component::getCurrentlyModalComponent() != nullptr)
+            return false;
+
+        if (key.getModifiers().isAnyModifierKeyDown())
+            return false;
+
+        return key.isKeyCode(juce::KeyPress::spaceKey) || key.getTextCharacter() == ' ';
+    }
+
+    std::function<void()> onToggle;
+};
 } // namespace
 
 class MainComponent : public juce::AudioAppComponent,
-                      private juce::MidiInputCallback,
-                      private juce::KeyListener
+                      private juce::MidiInputCallback
 {
 public:
+    bool handleDiffShortcutKey(const juce::KeyPress& key)
+    {
+        if (diffShortcutListener == nullptr)
+            return false;
+
+        return diffShortcutListener->keyPressed(key, this);
+    }
+
+    juce::KeyListener* getDiffShortcutListener() const { return diffShortcutListener.get(); }
+
+    void requestPcKeyboardFocus()
+    {
+        juce::MessageManager::callAsync([this]
+                                        {
+                                            juce::MessageManager::callAsync([this]
+                                                                           { focusPcKeyboardIfEnabled(); });
+                                        });
+    }
+
     explicit MainComponent(const AppState::Session& session)
         : presetManager([this] { onPresetParametersChanged(); })
     {
@@ -101,6 +177,32 @@ public:
                                      SynthTheme::accent.withAlpha(0.55f));
         addAndMakeVisible(*keyboardComponent);
 
+        pcKeyboardOnButton.setButtonText("ON");
+        pcKeyboardOnButton.setComponentID("masterBarText");
+        pcKeyboardOnButton.setClickingTogglesState(true);
+        pcKeyboardOnButton.setRadioGroupId(9101);
+        pcKeyboardOnButton.setToggleState(true, juce::dontSendNotification);
+        pcKeyboardOnButton.setLookAndFeel(&keyboardBarLookAndFeel);
+        pcKeyboardOnButton.onClick = [this] { setPcKeyboardEnabled(true); };
+        addAndMakeVisible(pcKeyboardOnButton);
+
+        pcKeyboardOffButton.setButtonText("OFF");
+        pcKeyboardOffButton.setComponentID("masterBarText");
+        pcKeyboardOffButton.setClickingTogglesState(true);
+        pcKeyboardOffButton.setRadioGroupId(9101);
+        pcKeyboardOffButton.setToggleState(false, juce::dontSendNotification);
+        pcKeyboardOffButton.setLookAndFeel(&keyboardBarLookAndFeel);
+        pcKeyboardOffButton.onClick = [this] { setPcKeyboardEnabled(false); };
+        addAndMakeVisible(pcKeyboardOffButton);
+
+        addAndMakeVisible(pcKeyboardDisplay);
+        pcKeyboardDisplay.setMappingEnabled(true);
+        pcKeyboardDisplay.onClicked = [this] { requestPcKeyboardFocus(); };
+
+        addAndMakeVisible(trebleStaffDisplay);
+        trebleStaffDisplay.setBarLookAndFeel(&keyboardBarLookAndFeel);
+        trebleStaffDisplay.getActiveNotes = [this] { return collectActiveMidiNotes(); };
+
         addAndMakeVisible(editor);
         editor.onMidiSelectionChanged = [this](int id) { reconnectMidiInput(id); };
         editor.onPanic = [this] { stopAllSound(); };
@@ -119,15 +221,25 @@ public:
         updatePresetSaveButtonState();
         captureDiffBaseline();
 
+        diffShortcutListener = std::make_unique<DiffShortcutKeyListener>([this]
+                                                                         { handleDiffToggle(!diffActive); });
+        addKeyListener(diffShortcutListener.get());
+        keyboardComponent->addKeyListener(diffShortcutListener.get());
+        editor.addKeyListener(diffShortcutListener.get());
+
         setWantsKeyboardFocus(true);
-        addKeyListener(this);
 
         setSize(1080, 680);
     }
 
     ~MainComponent() override
     {
-        removeKeyListener(this);
+        pcKeyboardOnButton.setLookAndFeel(nullptr);
+        pcKeyboardOffButton.setLookAndFeel(nullptr);
+        editor.removeKeyListener(diffShortcutListener.get());
+        if (keyboardComponent != nullptr)
+            keyboardComponent->removeKeyListener(diffShortcutListener.get());
+        removeKeyListener(diffShortcutListener.get());
         shutdownAudio();
         closeMidiInputs();
         setLookAndFeel(nullptr);
@@ -216,37 +328,73 @@ public:
         titleRow.removeFromLeft(kHeaderTitleSubtitleGap);
         subtitleLabel.setBounds(titleRow);
 
-        auto keyboardArea = bounds.removeFromBottom(kKeyboardHeight).reduced(kMargin, 6);
+        auto keyboardRow = bounds.removeFromBottom(kKeyboardHeight).reduced(kMargin, 6);
+        auto sidePanel = keyboardRow.removeFromRight(kKeyboardSidePanelWidth);
+        auto staffArea = keyboardRow.removeFromRight(kTrebleStaffWidth);
+        trebleStaffDisplay.setBounds(staffArea.reduced(2, 4));
+        auto toggleColumn = sidePanel.removeFromLeft(kPcKeyboardToggleColumnWidth);
+        const auto toggleHeight = juce::jmax(18, (toggleColumn.getHeight() - 2) / 2);
+        pcKeyboardOnButton.setBounds(toggleColumn.removeFromTop(toggleHeight).reduced(1, 1));
+        pcKeyboardOffButton.setBounds(toggleColumn.reduced(1, 1));
+        pcKeyboardDisplay.setBounds(sidePanel.reduced(2, 2));
         if (keyboardComponent != nullptr)
-            keyboardComponent->setBounds(keyboardArea);
+            keyboardComponent->setBounds(keyboardRow);
 
         editor.setBounds(bounds.reduced(kMargin, 8));
     }
 
     bool keyPressed(const juce::KeyPress& key) override
     {
-        if (handleDiffKeyPress(key))
+        if (handleDiffShortcutKey(key))
             return true;
 
         return juce::AudioAppComponent::keyPressed(key);
     }
 
 private:
-    bool keyPressed(const juce::KeyPress& key, juce::Component*) override
+    void focusPcKeyboardIfEnabled()
     {
-        return handleDiffKeyPress(key);
+        if (pcKeyboardEnabled && keyboardComponent != nullptr)
+            keyboardComponent->grabKeyboardFocus();
     }
 
-    bool handleDiffKeyPress(const juce::KeyPress& key)
+    juce::Array<int> collectActiveMidiNotes() const
     {
-        if (juce::Component::getCurrentlyModalComponent() != nullptr)
-            return false;
+        juce::Array<int> notes;
 
-        if (key.getKeyCode() != 'D' || key.getModifiers().isAnyModifierKeyDown())
-            return false;
+        for (int i = 0; i < synth.getNumVoices(); ++i)
+        {
+            if (auto* voice = dynamic_cast<const SynthVoice*>(synth.getVoice(i)))
+            {
+                if (voice->isSoundingForMono())
+                    notes.addIfNotAlreadyThere(voice->getCurrentMidiNote());
+            }
+        }
 
-        handleDiffToggle(!diffActive);
-        return true;
+        notes.sort();
+        return notes;
+    }
+
+    void setPcKeyboardEnabled(bool enabled)
+    {
+        if (pcKeyboardEnabled == enabled)
+        {
+            if (enabled)
+                requestPcKeyboardFocus();
+            return;
+        }
+
+        pcKeyboardEnabled = enabled;
+
+        if (keyboardComponent != nullptr)
+            setPcKeyboardMappingsEnabled(*keyboardComponent, enabled);
+
+        pcKeyboardOnButton.setToggleState(enabled, juce::dontSendNotification);
+        pcKeyboardOffButton.setToggleState(!enabled, juce::dontSendNotification);
+        pcKeyboardDisplay.setMappingEnabled(enabled);
+
+        if (enabled)
+            requestPcKeyboardFocus();
     }
 
     void handleIncomingMidiMessage(juce::MidiInput*, const juce::MidiMessage& message) override
@@ -631,6 +779,12 @@ private:
     juce::MidiMessageCollector midiCollector;
     juce::MidiKeyboardState keyboardState;
     std::unique_ptr<juce::MidiKeyboardComponent> keyboardComponent;
+    FuturisticLookAndFeel keyboardBarLookAndFeel;
+    juce::ToggleButton pcKeyboardOnButton;
+    juce::ToggleButton pcKeyboardOffButton;
+    PcKeyboardDisplay pcKeyboardDisplay;
+    TrebleStaffDisplay trebleStaffDisplay;
+    bool pcKeyboardEnabled = true;
     std::vector<std::unique_ptr<juce::MidiInput>> midiInputs;
     juce::StringArray midiDeviceNames;
     juce::StringArray midiDeviceIdentifiers;
@@ -643,6 +797,7 @@ private:
     juce::var diffBaseline;
     juce::var diffPreToggleSnapshot;
     bool diffActive = false;
+    std::unique_ptr<DiffShortcutKeyListener> diffShortcutListener;
 
     JUCE_DECLARE_NON_COPYABLE_WITH_LEAK_DETECTOR(MainComponent)
 };
@@ -681,11 +836,38 @@ private:
             setVisible(true);
             lockMinimumSizeToCurrentBounds();
 
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+            {
+                addKeyListener(content->getDiffShortcutListener());
+                content->requestPcKeyboardFocus();
+            }
+
             // Frame size may not be final until after the native peer finishes layout.
-            juce::MessageManager::callAsync([this] { lockMinimumSizeToCurrentBounds(); });
+            juce::MessageManager::callAsync([this]
+                                            {
+                                                lockMinimumSizeToCurrentBounds();
+
+                                                if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                                                    content->requestPcKeyboardFocus();
+                                            });
         }
 
-        ~MainWindow() override { persistSession(); }
+        ~MainWindow() override
+        {
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                removeKeyListener(content->getDiffShortcutListener());
+
+            persistSession();
+        }
+
+        bool keyPressed(const juce::KeyPress& key) override
+        {
+            if (auto* content = dynamic_cast<MainComponent*>(getContentComponent()))
+                if (content->handleDiffShortcutKey(key))
+                    return true;
+
+            return DocumentWindow::keyPressed(key);
+        }
 
         void closeButtonPressed() override
         {

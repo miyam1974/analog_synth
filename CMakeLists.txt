@@ -48,6 +48,13 @@ if(WIN32)
         PROPERTIES OBJECT_DEPENDS "${_analog_app_icon_ico}")
 endif()
 
+juce_add_binary_data(AnalogSynthFonts
+    SOURCES
+        Resources/Bravura.otf
+)
+
+target_link_libraries(AnalogSynth PRIVATE AnalogSynthFonts)
+
 target_sources(AnalogSynth
     PRIVATE
         Source/Main.cpp
@@ -61,6 +68,8 @@ target_sources(AnalogSynth
         Source/UI/LfoRateLed.cpp
         Source/UI/FuturisticLookAndFeel.cpp
         Source/UI/ModulePanel.cpp
+        Source/UI/PcKeyboardDisplay.cpp
+        Source/UI/TrebleStaffDisplay.cpp
         Source/UI/WaveformButton.cpp
 )
 

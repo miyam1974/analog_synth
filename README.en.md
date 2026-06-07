@@ -18,7 +18,7 @@ Top: presets, MONO, ALL OFF, SAVE / SAVE AS, LOAD, RESET, DIFF, MASTER
 
 Center: synth modules (compact header + five panels)
 
-Bottom: on-screen keyboard and MIDI settings
+Bottom: on-screen keyboard (mouse) + **treble staff** (live pitch display) + PC keyboard diagram (ASDF play) with **ON / OFF** on the right
 
 ### While playing
 
@@ -41,9 +41,10 @@ Playhead dots on the FILTER and AMPLIFIER EG graphs
 | Filter | Low-pass (CUT / RES / ENV / KEY), Filter EG graph |
 | Amp | Amp ADSR graph |
 | LFO | LFO1 / LFO2 (RATE / DEPTH, Pitch / Filter / Amp, RATE-synced LEDs) |
-| Performance | 16 voices, MONO, ALL OFF (panic / all notes off) |
+| Performance | 16 voices, MONO, ALL OFF. On-screen keyboard (mouse), **PC keyboard (ASDF etc.)**, external MIDI |
+| Treble staff | **Treble-clef staff** (`TrebleStaffDisplay`) between the on-screen keyboard and PC key diagram. Shows sounding pitch classes in real time. **♯ / ♭** spelling toggle on the left (default ♭) |
 | Presets | 4 built-in + user presets. SAVE (overwrite), SAVE AS, LOAD, RESET |
-| Compare | **DIFF** — A/B against tone at launch or last RESET / LOAD (`D` key toggles) |
+| Compare | **DIFF** — A/B against tone at launch or last RESET / LOAD (Space key toggles) |
 | Session | On quit, saves tone, preset, MIDI, and window bounds under `%APPDATA%` |
 | Help | Japanese tooltips on hover (SYSTEM footer, 14pt) |
 | Icon | Windows exe: **Nex** on yellow-green (`Resources/Icons/`) |
@@ -165,12 +166,28 @@ After you push a new tag and Actions succeeds, a fresh EXE appears there.
 1. Connect a USB MIDI keyboard (optional)
 2. Run `AnalogSynth.exe` from a [download](#download) or [build](#build)
 3. Under **SYSTEM**, choose **MIDI IN** (`All Inputs` merges all devices)
-4. Tweak modules, then play from the on-screen keyboard or MIDI
-5. Hover controls to see Japanese help in the SYSTEM footer
-6. **RESET** restores factory defaults (INIT). RESET / LOAD also refresh the **DIFF** comparison baseline
-7. After editing, use **DIFF** to switch against the baseline tone (while active, only ALL OFF / MASTER / MIDI IN / DIFF work)
-8. **SAVE AS** creates a user preset; **SAVE** overwrites the loaded user preset (enabled only after edits)
-9. On quit, synth settings, preset selection, MIDI input, and window layout are restored on next launch
+4. Tweak modules, then play from the on-screen keyboard, **PC keyboard (when ON)**, or external MIDI (the treble staff shows sounding pitches)
+5. **PC keyboard play**: use **ON / OFF** at the bottom-right (**ON** at launch). Click **ON** or the PC key diagram to give the virtual keyboard focus so ASDF keys sound (see table below). **OFF** clears PC key mappings
+6. Hover controls to see Japanese help in the SYSTEM footer
+7. **RESET** restores factory defaults (INIT). RESET / LOAD also refresh the **DIFF** comparison baseline
+8. After editing, use **DIFF** to switch against the baseline tone (while active, only ALL OFF / MASTER / MIDI IN / DIFF work). **Space** also toggles DIFF
+9. **SAVE AS** creates a user preset; **SAVE** overwrites the loaded user preset (enabled only after edits)
+10. On quit, synth settings, preset selection, MIDI input, and window layout are restored on next launch
+
+### PC keyboard (ASDF) layout
+
+When **ON**, PC keys play like the on-screen keyboard (JUCE default QWERTY mapping).
+
+| Upper row (sharps) | (gap) | S | D | (gap) | T | Y | U | (gap) | O | P |
+| ------------------ | ----- | - | - | ----- | - | - | - | ----- | - | - |
+| Physical keys | | W | E | | T | Y | U | | O | P |
+| Lower row (naturals) | A | S | D | F | G | H | J | K | L | + |
+| Physical keys | A | S | D | F | G | H | J | K | L | ; |
+
+- Upper **S / D** labels map to physical **W / E** (black-key positions)
+- **+** is the **;** (semicolon) key
+- The diagram highlights pressed keys without needing focus; **sound** requires **ON** plus keyboard focus on the virtual keyboard component
+- If keys stop responding after editing, click **ON** or the PC key diagram again
 
 ### User preset location
 
@@ -198,6 +215,7 @@ analog_synth/
 ├── SPEC.md
 ├── LICENSE
 ├── Resources/
+│   ├── Bravura.otf           # SMuFL font for treble clef and accidentals
 │   └── Icons/
 │       ├── app_icon.png          # Windows icon source (Nex)
 │       ├── AppPrimaryIcon.rc     # exe icon (resource ID 1)
@@ -226,6 +244,7 @@ analog_synth/
         ├── WaveformButton.*
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
+        ├── TrebleStaffDisplay.*
         └── SynthTheme.h
 ```
 

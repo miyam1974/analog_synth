@@ -104,6 +104,7 @@ flowchart TB
 - `**MainComponent**` — 実体の UI とオーディオ処理
   - `juce::AudioAppComponent` — オーディオ I/O
   - `juce::MidiInputCallback` — 外部 MIDI 受信
+  - PC キーボード **ON/OFF**、`PcKeyboardDisplay`、`TrebleStaffDisplay`、`DiffShortcutKeyListener`（Space → DIFF）
 
 ### オーディオブロック処理（`getNextAudioBlock`）
 
@@ -350,7 +351,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 
 ## UI アーキテクチャ（`SynthEditor` + `Source/UI/`）
 
-`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 仮想キーボード（`MidiKeyboardComponent`、MIDI 36〜96）で構成。ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。
+`MainComponent` はコンパクトヘッダー（タイトル + サブタイトル、高さ **28px**）＋ `SynthEditor` ＋ 下部 **鍵盤行** で構成。鍵盤行（高さ **96px**）は左から **仮想キーボード**（`MidiKeyboardComponent`、MIDI 36〜96）→ **ト音記号五線譜**（`TrebleStaffDisplay`、幅 **162px**）→ **PC キーボード欄**（**ON / OFF** ＋ `PcKeyboardDisplay`、幅 **188px**）。ウィンドウ初期サイズは **1080×680**（前回終了時の位置・サイズがあれば復元）。PC キーボード欄内訳: トグル列 **38px** ＋ キー図 **150px** 相当。
 
 ### マスター行（`SynthEditor` 上部）
 
@@ -361,7 +362,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 | **PRESET**                       | プリセット選択（内蔵 + ユーザー）                    |
 | **SAVE** / **SAVE AS**           | ユーザープリセット上書き / 別名保存（編集時のみ有効）        |
 | **LOAD** / **RESET**             | JSON ファイル読込 / INIT 相当へ復帰              |
-| **DIFF**                         | 基準音色との A/B 比較（`D` キーでも切替）             |
+| **DIFF**                         | 基準音色との A/B 比較（Space キーでも切替）           |
 | **MASTER**                       | 出力レベル（**%** 表示、内部 0〜1）                |
 
 ### モジュールパネル
@@ -392,6 +393,43 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 | `SubOctGroupFrame`      | SUB オクターブボタン用角括弧フレーム                           |
 | `AdsrDisplay`           | ADSR 曲線 + 再生ヘッド                                |
 | `LfoRateLed`            | LFO 位相 LED（`GlobalLfo::Index` で LFO1/LFO2 を指定） |
+| `PcKeyboardDisplay`     | PC キー配列図（押下ハイライト、クリックで演奏フォーカス移動）         |
+| `TrebleStaffDisplay`    | ト音記号五線譜（発音中 pitch class のリアルタイム表示、♯/♭ 切替）   |
+
+### ト音記号五線譜（`TrebleStaffDisplay` + `Main.cpp`）
+
+- **配置**: 鍵盤行で仮想鍵盤の右・PC キー図の左（`kTrebleStaffWidth = 162`）
+- **データ源**: `getActiveNotes` コールバック ← `collectActiveMidiNotes()`（発音中 `SynthVoice` の MIDI ノート）
+- **描画更新**: 30 Hz `Timer` で `repaint`
+- **フォント**: `Resources/Bravura.otf` を `juce_add_binary_data(AnalogSynthFonts)` で埋め込み。ト音記号・臨時記号は Bravura SMuFL グリフを `Path` 描画
+- **♯/♭ 切替**: 左端 `TextButton` 2 個（ラジオグループ 9102、既定 ♭）。ラベルは `FuturisticLookAndFeel` の `staffAccidentalToggle` で描画
+- **音符ロジック**（`TrebleStaffDisplay.cpp`）:
+  - 発音ノートから pitch class を抽出・ソート・重複除去
+  - 最低音は `displayStepForPitchClass` で実音高の staff step を使用
+  - 他の pitch class は最低音 step 以下なら `+7`（1 オクターブ）で折り畳み
+  - 線上/線間で符頭 X を左右にずらし（`kNoteHeadStaggerRatio`、線間は追加 `kSpaceNoteExtraOffsetX`）
+  - 臨時記号は調号順（♯: F→C→G→… / ♭: B→E→A→…）にソートし、glyph 幅 + 隙間で左から右へ列をずらす（`assignAccidentalColumnRights`）
+  - 中央ドの下加線は常時表示（`kMiddleCLedgerHalfWidth`）
+
+```text
+鍵盤行（左 → 右）
+┌──────────────────────────┬─────────────┬──────────────────┐
+│ MidiKeyboardComponent    │ TrebleStaff │ ON/OFF + PcKeyboard│
+│ （マウス演奏）            │ Display     │ Display          │
+└──────────────────────────┴─────────────┴──────────────────┘
+```
+
+### PC キーボード演奏（`Main.cpp` + `PcKeyboardDisplay`）
+
+- **ON / OFF**（`ToggleButton`、ラジオグループ 9101）→ `setPcKeyboardEnabled`
+  - **ON**: `applyDefaultPcKeyMappings` で JUCE 標準マッピング（`awsedftgyhujkolp;`）を `MidiKeyboardComponent` に設定
+  - **OFF**: `clearKeyMappings`（押下中 PC キー音は `resetAnyKeysInUse` 経由で停止）
+- **フォーカス**: `MidiKeyboardComponent::keyStateChanged` がキーイベントを受け取るにはコンポーネントへのキーボードフォーカスが必要
+  - `requestPcKeyboardFocus()` — 二重 `callAsync` でレイアウト後に `grabKeyboardFocus`
+  - 起動時: `MainWindow` で `setVisible` 後に呼び出し
+  - **ON** 選択・**PC キー図**クリック時にも呼び出し
+- **`PcKeyboardDisplay`**: 30 Hz タイマーで `KeyPress::isKeyCurrentlyDown` を参照し描画（フォーカス不要）。`onClicked` → `requestPcKeyboardFocus`
+- **DIFF ショートカット**: **Space** は `DiffShortcutKeyListener`（`MainComponent` / 仮想鍵盤 / `SynthEditor` / `MainWindow` に登録）。PC 演奏キー（ASDF 等）と競合しない
 
 ### ヘルプ
 
@@ -404,7 +442,7 @@ SynthVoice::publishPlayhead()  →  EnvelopePlayheadHub（atomic）
 - **DIFF ON**: 基準パラメータを適用（MASTER は維持）。`SynthEditor::setParametersLocked(true)` で UI ロック
   - 操作可: ALL OFF / MASTER / MIDI IN / DIFF（＋仮想キーボード・外部 MIDI 演奏）
 - **DIFF OFF**: トグル前のスナップショットへ復帰
-- キーボード **`D`** でトグル（`MainComponent::handleDiffKeyPress`）
+- キーボード **Space** でトグル（`DiffShortcutKeyListener`）
 
 ### OSC2 トグル
 
@@ -458,6 +496,7 @@ analog_synth/
 ├── SPEC.md                 # UI 機能仕様
 ├── LICENSE                 # MIT
 ├── Resources/
+│   ├── Bravura.otf             # 五線譜用 SMuFL フォント（BinaryData）
 │   └── Icons/
 │       ├── app_icon.png        # アイコン元画像（Nex / 黄緑）
 │       ├── AppPrimaryIcon.rc   # exe リソース ID 1
@@ -467,7 +506,7 @@ analog_synth/
 │       ├── nexus-osc-ui.png  # メイン画面（README）
 │       └── playing.png       # 演奏時（README）
 └── Source/
-    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / DIFF
+    ├── Main.cpp            # アプリ / オーディオ / MIDI ハブ / DIFF / PC キーボード ON/OFF / 五線譜
     ├── AppState.*          # セッション JSON
     ├── SynthEditor.*       # メイン UI
     ├── SynthVoice.*        # 1 ボイスの DSP
@@ -486,6 +525,8 @@ analog_synth/
         ├── WaveformButton.*
         ├── SubOctGroupFrame.h
         ├── FuturisticLookAndFeel.*
+        ├── PcKeyboardDisplay.*
+        ├── TrebleStaffDisplay.*
         └── SynthTheme.h
 ```
 
@@ -559,7 +600,9 @@ Explorer が参照する **リソース ID 1** のアイコンを明示的に埋
 | EG グラフ           | `UI/AdsrDisplay.*`, `EnvelopePlayhead.*`                          |
 | プリセット形式 / dirty 判定 | `PresetManager.cpp`                                               |
 | セッション JSON          | `AppState.cpp`                                                    |
-| DIFF / 比較基準          | `Main.cpp`（`captureDiffBaseline`, `enterDiffMode`）               |
+| DIFF / 比較基準          | `Main.cpp`（`captureDiffBaseline`, `enterDiffMode`, `DiffShortcutKeyListener`） |
+| PC キーボード（ASDF）    | `Main.cpp`, `UI/PcKeyboardDisplay.*`                                              |
+| ト音記号五線譜           | `UI/TrebleStaffDisplay.*`, `Main.cpp`（`collectActiveMidiNotes`）, `Resources/Bravura.otf` |
 | OSC2 トグル            | `SynthEditor.cpp`, `SynthParameters.h`, `SynthVoice.cpp`        |
 | MIDI / オーディオ I/O | `Main.cpp`（MIDI）、`AudioAppComponent` / `AudioDeviceManager`（出力方式） |
 | Windows アイコン        | `CMakeLists.txt`, `Resources/Icons/*`                             |

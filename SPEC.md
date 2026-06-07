@@ -17,7 +17,7 @@
 | マスター行 | ALL OFF / MONO / PRESET / SAVE / SAVE AS / LOAD / RESET / DIFF / MASTER |
 | モジュールパネル | OSCILLATOR / MIXER / FILTER / AMPLIFIER / LFO（左→右） |
 | SYSTEM フッター | MIDI IN、ステータス行（ヘルプ / MIDI 状態） |
-| 仮想キーボード | 画面下部、マウス演奏用 |
+| 鍵盤行（下部） | 左→右: **仮想キーボード** / **ト音記号五線譜**（幅 162px）/ **PC キーボード欄**（ON/OFF + キー図、幅 188px） |
 
 モジュール幅（参考）: OSC **21%** / MIXER **17%** / FILTER **23%** / AMP **19%** / 残り LFO。
 
@@ -34,7 +34,7 @@
 | **SAVE AS** | ボタン | 別名保存 | 名前入力ダイアログ → JSON 新規保存。編集後に有効（内蔵プリセット編集中も可） |
 | **LOAD** | ボタン | ユーザープリセット読込 | ファイル選択ダイアログ（`*.json`）。DIFF 基準を更新 |
 | **RESET** | ボタン | 工場出荷状態へ | INIT 相当。DIFF 基準を更新 |
-| **DIFF** | トグル | 基準音色との比較 | ON: 起動時または最後の RESET/LOAD 時の音色を適用し、他コントロールをロック。OFF: 復帰。`D` キーでも切替 |
+| **DIFF** | トグル | 基準音色との比較 | ON: 起動時または最後の RESET/LOAD 時の音色を適用し、他コントロールをロック。OFF: 復帰。Space キーでも切替 |
 | **MASTER** | 水平スライダー | マスター音量 | 0〜100% 表示（内部 0.00〜1.00、既定 85%） |
 
 ### プリセット
@@ -55,8 +55,8 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | 基準の記録 | 起動時、**RESET**、**LOAD**、ユーザープリセット **LOAD** 後 |
 | DIFF ON | 基準の全パラメータを適用（**MASTER** は保持）。UI は **ALL OFF / MASTER / MIDI IN / DIFF** のみ操作可 |
 | DIFF OFF | DIFF ON 前のスナップショットへ復帰（MASTER は DIFF 中の値を維持） |
-| キーボード | `D` キーで ON/OFF 切替（モーダルダイアログ表示中は無効） |
-| 演奏 | 仮想キーボード・外部 MIDI は DIFF 中も有効 |
+| キーボード | Space キーで ON/OFF 切替（モーダルダイアログ表示中は無効） |
+| 演奏 | 仮想キーボード・**PC キーボード（ON 時）**・外部 MIDI は DIFF 中も有効 |
 
 ---
 
@@ -171,7 +171,9 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 
 ---
 
-## 8. 仮想キーボード
+## 8. 仮想キーボード・PC キーボード（ASDF）
+
+### 8a. 仮想キーボード（`MidiKeyboardComponent`）
 
 | 項目 | 内容 |
 | ---- | ---- |
@@ -180,7 +182,68 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | 表示 | 押下中キーのハイライト |
 | 併用 | 外部 MIDI と同時に `MidiKeyboardState` へマージ |
 
+### 8b. PC キーボード演奏
+
+| UI | 種別 | 説明 |
+| -- | ---- | ---- |
+| **ON / OFF** | ラジオ式トグル（上下配置） | **ON**: PC キー → MIDI マッピングを有効化。**OFF**: マッピング解除（押下中の PC キー音は停止） |
+| **PC キー図** | 表示 | 2 段のキー配列。押下中キーをハイライト（OS のキー状態を参照） |
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 既定 | 起動時 **ON** |
+| キー配列 | JUCE 標準 QWERTY（`awsedftgyhujkolp;`） |
+| 下段（白鍵） | **A S D F G H J K L +** — 物理キー **A〜L** と **;**（**+** 表示） |
+| 上段（黒鍵） | **S D T Y U O P**（図上ラベル）— 物理キー **W E T Y U O P**（上段 **S/D** は **W/E** の位置表示） |
+| フォーカス | PC キーで**発音**するには `MidiKeyboardComponent` がキーボードフォーカスを持つ必要がある |
+| フォーカス移動 | **ON** 選択時、起動後（ウィンドウ表示完了後）、**ON** 再クリック、**PC キー図**クリックで仮想鍵盤へフォーカス |
+| 実装 | `Main.cpp` — `setPcKeyboardEnabled`, `applyDefaultPcKeyMappings`, `requestPcKeyboardFocus` |
+| 表示 | `UI/PcKeyboardDisplay.*` — 30 Hz でキー状態をポーリングして描画 |
+
+**Space** キーは PC 演奏ではなく **DIFF** 切替専用（`DiffShortcutKeyListener`）。ASDF 演奏と競合しない。
+
 オーディオデバイスやバッファサイズの UI は無い（OS / JUCE デフォルト出力）。
+
+---
+
+## 8c. ト音記号五線譜（`TrebleStaffDisplay`）
+
+仮想鍵盤と PC キー図の間に配置。発音中ボイスの MIDI ノートを **音名（pitch class）単位** で五線譜上に表示する。
+
+| UI | 種別 | 説明 |
+| -- | ---- | ---- |
+| **♯** | トグル（上） | 臨時記号をシャープ表記に切替（ラジオグループ 9102） |
+| **♭** | トグル（下） | 臨時記号をフラット表記に切替。**起動時既定** |
+| 五線譜本体 | 表示 | ト音記号・五線・中央ド用補助線（常時表示）・音符・臨時記号 |
+
+### 表示仕様
+
+| 項目 | 内容 |
+| ---- | ---- |
+| 音域 | 中央ド（下加線）〜 その 1 オクターブ上の変ロ長音付近（`staffStep` -2〜11） |
+| 入力 | `MainComponent::collectActiveMidiNotes()` — 発音中ボイスの MIDI ノート番号 |
+| 統合 | 同じ pitch class（C, C♯, …）は **1 つの音符** にまとめる |
+| 最低音 | 実際の最低音は正しい音高で表示 |
+| それ以外 | 最低音より下に折り畳まれる音は **1 オクターブ上** にずらして重なりを避ける |
+| 音符 | 楕円形符頭、高さ **9px** 固定 |
+| 横位置 | 線上の音（ド・ミ・ソ等）は左寄せ、線間の音（レ・ファ・ラ等）は右寄せ（段階的オフセット） |
+| 臨時記号 | Bravura グリフ（♯ `U+E262` / ♭ `U+E260`）。複数同時は **調号順** に左から右へ横にずらして重なり回避 |
+| ト音記号 | Bravura グリフ（`U+E050`） |
+| 更新 | 30 Hz タイマーで `repaint` |
+
+### レイアウト定数（参考）
+
+| 定数 | 値 | 備考 |
+| ---- | -- | ---- |
+| `kTrebleStaffWidth` | 162 px | `Main.cpp` |
+| `kAccidentalToggleColumnWidth` | 18 px | ♯/♭ ボタン列 |
+| `kClefAreaWidth` | 36 px | ト音記号領域 |
+
+### 実装ファイル
+
+- `Source/UI/TrebleStaffDisplay.*` — 描画・♯/♭ 切替
+- `Source/UI/FuturisticLookAndFeel.cpp` — ♯/♭ ボタンのラベル描画（`staffAccidentalToggle`）
+- `Resources/Bravura.otf` — `AnalogSynthFonts` バイナリデータとしてリンク
 
 ---
 
@@ -190,6 +253,7 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | ---- | ---- |
 | **EG 再生ヘッド** | 演奏中、Filter / Amp の EG グラフ上に点（最大 16）が移動 |
 | **LFO RATE LED** | LFO1/LFO2 各 1 個。RATE に同期した点滅 |
+| **ト音記号五線譜** | 発音中の pitch class を音符で表示（`TrebleStaffDisplay`） |
 | **ノブ値ラベル** | 各ノブ下に数値表示（CUT は Hz 整数など） |
 | **モジュールパネル枠** | OSC / MIXER / FILTER / AMP / LFO / SYSTEM の区分表示 |
 
@@ -246,7 +310,9 @@ SAVE / SAVE AS / LOAD / RESET / プリセット選択後はベースラインを
 | MIDI 入力 | 外部 MIDI の受信・演奏 | **MIDI IN** のみ UI あり。チャンネルフィルタ等の UI は無い |
 | ポリフォニー | 最大 16 ボイス | サブタイトル表記のみ。**発音数の動的表示 UI は無い** |
 | セッション | 終了時に `session.json` へ全パラメータ・プリセット・MIDI・ウィンドウを保存 | UI からの手動保存は無し |
-| DIFF 比較 | 基準音色との A/B 切替 | **DIFF** ボタン / `D` キー |
+| PC キーボード演奏 | ASDF 等で演奏、ON/OFF、キー図表示 | **ON / OFF**、右端 PC キー図。Space は DIFF 専用 |
+| ト音記号五線譜 | 発音中音程のリアルタイム表示、♯/♭ 切替 | `TrebleStaffDisplay`。セッション保存対象外 |
+| DIFF 比較 | 基準音色との A/B 切替 | **DIFF** ボタン / Space キー |
 
 ### 未実装
 
